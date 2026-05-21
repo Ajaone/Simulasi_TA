@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}" />
+    <title>{% block title %}Home{% endblock %}</title>
+  </head>
+  <body>
+    <nav class="nav">
+      <a class="brand" href="/">SecAuth</a>
+      <a id="home" href="/">Home</a>
+      <a id="login" href="/login">Login</a>
+      <a id="signUp" href="/sign-up">Sign up</a>
+    </nav>
+
+    <div id="toast-container" aria-live="polite" aria-atomic="true"></div>
+
+    <main>{% block content %}{% endblock %}</main>
+
+    <script src="{{ url_for('static', filename='toast.js') }}"></script>
+    <script src="{{ url_for('static', filename='index.js') }}" type="module"></script>
+  </body>
+</html>

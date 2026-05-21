@@ -1,0 +1,165 @@
+@import url("https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300..700&family=Inter:wght@400;500;600&display=swap");
+
+:root {
+  --bg: #faf9f6;
+  --fg: #15130f;
+  --muted: #6b6660;
+  --rule: #d7d2c8;
+  --accent: #15130f;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 16px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: var(--fg);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+a:hover { text-decoration-thickness: 2px; }
+
+h1, h2, h3, h4 {
+  font-family: "Fraunces", Georgia, "Times New Roman", serif;
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+  margin: 0 0 16px 0;
+}
+
+h1 { font-size: 56px; font-variation-settings: "opsz" 144; }
+h2 { font-size: 36px; }
+h3 { font-size: 26px; }
+
+p { margin: 0 0 16px 0; }
+.muted { color: var(--muted); }
+
+/* Nav — plain HTML feel: a single rule, inline links */
+.nav {
+  display: flex;
+  gap: 28px;
+  align-items: baseline;
+  padding: 28px 40px;
+  border-bottom: 1px solid var(--rule);
+}
+.nav .brand {
+  font-family: "Fraunces", Georgia, serif;
+  font-size: 20px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  margin-right: auto;
+  text-decoration: none;
+}
+.nav a {
+  font-size: 14px;
+  color: var(--muted);
+  text-decoration: none;
+}
+.nav a:hover { color: var(--fg); }
+
+main {
+  max-width: 520px;
+  margin: 0 auto;
+  padding: 80px 32px 120px;
+}
+
+/* Forms — barely-there inputs, underline only */
+form {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  margin-top: 32px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+label {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--muted);
+  font-weight: 500;
+}
+
+input[type="email"],
+input[type="password"],
+input[type="text"] {
+  width: 100%;
+  border: 0;
+  border-bottom: 1px solid var(--rule);
+  background: transparent;
+  font-family: inherit;
+  font-size: 18px;
+  padding: 6px 0 10px;
+  color: var(--fg);
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+
+input:focus {
+  border-bottom-color: var(--fg);
+}
+
+input::placeholder {
+  color: #b3aea4;
+}
+
+button[type="submit"],
+.btn {
+  align-self: flex-start;
+  background: var(--fg);
+  color: var(--bg);
+  border: 1px solid var(--fg);
+  padding: 12px 22px;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+button[type="submit"]:hover,
+.btn:hover {
+  background: transparent;
+  color: var(--fg);
+}
+
+.btn-ghost {
+  background: transparent;
+  color: var(--fg);
+}
+.btn-ghost:hover {
+  background: var(--fg);
+  color: var(--bg);
+}
+
+.eyebrow {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  color: var(--muted);
+  margin-bottom: 16px;
+}
+
+.center { text-align: center; }
+
+.lead {
+  font-size: 18px;
+  color: var(--muted);
+  max-width: 36ch;
+}

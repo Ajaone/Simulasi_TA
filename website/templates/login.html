@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Login{% endblock %}
+{% block content %}
+<p class="eyebrow">Sign in</p>
+<h2>Welcome back.</h2>
+<p class="muted">Enter your credentials. We'll verify your typing rhythm too.</p>
+
+<form id="login-form">
+  <div class="field">
+    <label for="email">Email</label>
+    <input type="email" id="email" name="email" placeholder="you@example.com" autocomplete="off" />
+  </div>
+  <div class="field">
+    <label for="password">Password</label>
+    <input type="password" id="password" name="password" placeholder="Enter your password" autocomplete="off" />
+  </div>
+  <button type="submit" id="login-button">Continue</button>
+</form>
+
+<p class="muted" style="margin-top: 40px; font-size: 14px;">
+  No account yet? <a href="/sign-up">Create one</a>.
+</p>
+{% endblock %}

@@ -1,0 +1,559 @@
+{
+  "info": {
+    "_postman_id": "secauth-partner-api-v1",
+    "name": "SecAuth Partner API",
+    "description": "Postman collection untuk API Partner SecAuth Keystroke Dynamics.\n\nEndpoints:\n- POST /api/partner/enroll  — Daftarkan pola ketikan pengguna\n- POST /api/partner/verify  — Autentikasi pengguna berdasarkan pola ketikan\n\nVariabel Collection:\n- base_url : <SECAUTH_BASE_URL>\n- api_key  : Bearer token dari SecAuth\n- username : UUID pengguna yang akan di-enroll/verify",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "<SECAUTH_BASE_URL>",
+      "type": "string"
+    },
+    {
+      "key": "api_key",
+      "value": "<YOUR_API_KEY>",
+      "type": "string"
+    },
+    {
+      "key": "username",
+      "value": "test-user-550e8400-e29b-41d4",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Enrollment",
+      "description": "Folder untuk semua request enrollment pola ketikan pengguna.",
+      "item": [
+        {
+          "name": "Enroll — Success (sample data)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200 or 201', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+                  "});",
+                  "",
+                  "pm.test('Response has success=true', function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.success).to.be.true;",
+                  "});",
+                  "",
+                  "pm.test('Response contains templates_count', function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json).to.have.property('templates_count');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{api_key}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{username}}\",\n  \"events\": [\n    { \"evt\": \"d\", \"key\": \"p\", \"code\": \"KeyP\", \"t\": 0.0 },\n    { \"evt\": \"u\", \"key\": \"p\", \"code\": \"KeyP\", \"t\": 82.5 },\n    { \"evt\": \"d\", \"key\": \"a\", \"code\": \"KeyA\", \"t\": 210.3 },\n    { \"evt\": \"u\", \"key\": \"a\", \"code\": \"KeyA\", \"t\": 295.1 },\n    { \"evt\": \"d\", \"key\": \"s\", \"code\": \"KeyS\", \"t\": 380.0 },\n    { \"evt\": \"u\", \"key\": \"s\", \"code\": \"KeyS\", \"t\": 461.2 },\n    { \"evt\": \"d\", \"key\": \"s\", \"code\": \"KeyS\", \"t\": 520.5 },\n    { \"evt\": \"u\", \"key\": \"s\", \"code\": \"KeyS\", \"t\": 601.3 },\n    { \"evt\": \"d\", \"key\": \"w\", \"code\": \"KeyW\", \"t\": 700.0 },\n    { \"evt\": \"u\", \"key\": \"w\", \"code\": \"KeyW\", \"t\": 780.5 },\n    { \"evt\": \"d\", \"key\": \"o\", \"code\": \"KeyO\", \"t\": 850.2 },\n    { \"evt\": \"u\", \"key\": \"o\", \"code\": \"KeyO\", \"t\": 930.8 },\n    { \"evt\": \"d\", \"key\": \"r\", \"code\": \"KeyR\", \"t\": 1010.0 },\n    { \"evt\": \"u\", \"key\": \"r\", \"code\": \"KeyR\", \"t\": 1097.4 },\n    { \"evt\": \"d\", \"key\": \"d\", \"code\": \"KeyD\", \"t\": 1180.0 },\n    { \"evt\": \"u\", \"key\": \"d\", \"code\": \"KeyD\", \"t\": 1260.6 }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/enroll",
+              "host": ["{{base_url}}"],
+              "path": ["enroll"]
+            },
+            "description": "Mendaftarkan pola ketikan pengguna ke SecAuth.\n\nPanggil endpoint ini minimal 3 kali dengan data events yang direkam secara nyata dari pengguna untuk membangun template biometrik yang stabil.\n\n**Fields:**\n- `username` : Identifier unik pengguna (UUID direkomendasikan)\n- `events`   : Array event keystroke (keydown/keyup) yang direkam"
+          },
+          "response": [
+            {
+              "name": "200 OK — Enrollment berhasil (belum lengkap)",
+              "originalRequest": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"username\": \"test-user-001\",\n  \"events\": [...]\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/enroll"
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Sample 1/10 saved\",\n  \"templates_count\": 1,\n  \"required_templates\": 10,\n  \"min_templates\": 10,\n  \"progress\": { \"complete\": false, \"current\": 1, \"target\": 10 }\n}"
+            },
+            {
+              "name": "201 Created — Enrollment lengkap",
+              "originalRequest": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"username\": \"test-user-001\",\n  \"events\": [...]\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/enroll"
+                }
+              },
+              "status": "Created",
+              "code": 201,
+              "_postman_previewlanguage": "json",
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Sample 10/10 saved\",\n  \"templates_count\": 10,\n  \"required_templates\": 10,\n  \"min_templates\": 10,\n  \"progress\": { \"complete\": true, \"current\": 10, \"target\": 10 }\n}"
+            },
+            {
+              "name": "400 Bad Request — Data keystroke tidak valid",
+              "originalRequest": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"username\": \"test-user-001\",\n  \"events\": []\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/enroll"
+                }
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": false,\n  \"error_code\": \"INVALID_KEYSTROKE_DATA\",\n  \"message\": \"Keystroke data is too short or malformed\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Enroll — Missing username (Error test)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 400', function () {",
+                  "    pm.expect(pm.response.code).to.equal(400);",
+                  "});",
+                  "",
+                  "pm.test('Response has success=false', function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.success).to.be.false;",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{api_key}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"events\": [\n    { \"evt\": \"d\", \"key\": \"a\", \"code\": \"KeyA\", \"t\": 0 },\n    { \"evt\": \"u\", \"key\": \"a\", \"code\": \"KeyA\", \"t\": 80 }\n  ]\n}",
+              "options": {
+                "raw": { "language": "json" }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/enroll",
+              "host": ["{{base_url}}"],
+              "path": ["enroll"]
+            },
+            "description": "Test error case: mengirim request tanpa field `username`. Diharapkan mendapat response 400 dengan error_code INVALID_INPUT."
+          },
+          "response": []
+        },
+        {
+          "name": "Enroll — Empty events array (Error test)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 400', function () {",
+                  "    pm.expect(pm.response.code).to.equal(400);",
+                  "});",
+                  "",
+                  "pm.test('Error code is INVALID_KEYSTROKE_DATA', function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.error_code).to.equal('INVALID_KEYSTROKE_DATA');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{api_key}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{username}}\",\n  \"events\": []\n}",
+              "options": {
+                "raw": { "language": "json" }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/enroll",
+              "host": ["{{base_url}}"],
+              "path": ["enroll"]
+            },
+            "description": "Test error case: mengirim array events kosong."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Verification",
+      "description": "Folder untuk semua request verifikasi identitas pengguna berdasarkan pola ketikan.",
+      "item": [
+        {
+          "name": "Verify — Success (sample data)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.expect(pm.response.code).to.equal(200);",
+                  "});",
+                  "",
+                  "pm.test('Response has success field', function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json).to.have.property('success');",
+                  "});",
+                  "",
+                  "pm.test('Response has verified field', function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json).to.have.property('verified');",
+                  "});",
+                  "",
+                  "pm.test('Response has confidence_score', function () {",
+                  "    const json = pm.response.json();",
+                  "    if (json.success) {",
+                  "        pm.expect(json).to.have.property('confidence_score');",
+                  "        pm.expect(json.confidence_score).to.be.within(0, 1);",
+                  "    }",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{api_key}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{username}}\",\n  \"events\": [\n    { \"evt\": \"d\", \"key\": \"p\", \"code\": \"KeyP\", \"t\": 0.0 },\n    { \"evt\": \"u\", \"key\": \"p\", \"code\": \"KeyP\", \"t\": 79.2 },\n    { \"evt\": \"d\", \"key\": \"a\", \"code\": \"KeyA\", \"t\": 198.4 },\n    { \"evt\": \"u\", \"key\": \"a\", \"code\": \"KeyA\", \"t\": 280.6 },\n    { \"evt\": \"d\", \"key\": \"s\", \"code\": \"KeyS\", \"t\": 375.0 },\n    { \"evt\": \"u\", \"key\": \"s\", \"code\": \"KeyS\", \"t\": 455.3 },\n    { \"evt\": \"d\", \"key\": \"s\", \"code\": \"KeyS\", \"t\": 512.1 },\n    { \"evt\": \"u\", \"key\": \"s\", \"code\": \"KeyS\", \"t\": 594.7 },\n    { \"evt\": \"d\", \"key\": \"w\", \"code\": \"KeyW\", \"t\": 692.5 },\n    { \"evt\": \"u\", \"key\": \"w\", \"code\": \"KeyW\", \"t\": 770.1 },\n    { \"evt\": \"d\", \"key\": \"o\", \"code\": \"KeyO\", \"t\": 840.8 },\n    { \"evt\": \"u\", \"key\": \"o\", \"code\": \"KeyO\", \"t\": 920.4 },\n    { \"evt\": \"d\", \"key\": \"r\", \"code\": \"KeyR\", \"t\": 1001.0 },\n    { \"evt\": \"u\", \"key\": \"r\", \"code\": \"KeyR\", \"t\": 1088.2 },\n    { \"evt\": \"d\", \"key\": \"d\", \"code\": \"KeyD\", \"t\": 1170.5 },\n    { \"evt\": \"u\", \"key\": \"d\", \"code\": \"KeyD\", \"t\": 1250.9 }\n  ]\n}",
+              "options": {
+                "raw": { "language": "json" }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/verify",
+              "host": ["{{base_url}}"],
+              "path": ["verify"]
+            },
+            "description": "Memverifikasi pola ketikan pengguna terhadap template yang sudah di-enroll.\n\nPastikan username yang digunakan sudah di-enroll sebelumnya. Response akan berisi:\n- `verified`: true/false\n- `decision`: genuine/impostor\n- `confidence_score`: 0.0 – 1.0\n- `confidence_label`: Low/Medium/High"
+          },
+          "response": [
+            {
+              "name": "200 OK — Verified (genuine)",
+              "originalRequest": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"username\": \"test-user-001\",\n  \"events\": [...]\n}"
+                },
+                "url": { "raw": "{{base_url}}/verify" }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"verified\": true,\n  \"decision\": \"genuine\",\n  \"confidence_score\": 0.87,\n  \"confidence_label\": \"High\"\n}"
+            },
+            {
+              "name": "200 OK — Not Verified (impostor)",
+              "originalRequest": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"username\": \"test-user-001\",\n  \"events\": [...]\n}"
+                },
+                "url": { "raw": "{{base_url}}/verify" }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"verified\": false,\n  \"decision\": \"impostor\",\n  \"confidence_score\": 0.21,\n  \"confidence_label\": \"Low\"\n}"
+            },
+            {
+              "name": "400 Bad Request — Insufficient enrollment",
+              "originalRequest": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"username\": \"new-user\",\n  \"events\": [...]\n}"
+                },
+                "url": { "raw": "{{base_url}}/verify" }
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": false,\n  \"error_code\": \"INSUFFICIENT_ENROLLMENT\",\n  \"templates_count\": 1,\n  \"message\": \"User requires at least 3 enrollment samples\"\n}"
+            },
+            {
+              "name": "404 Not Found — User not enrolled",
+              "originalRequest": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"username\": \"nonexistent-user\",\n  \"events\": [...]\n}"
+                },
+                "url": { "raw": "{{base_url}}/verify" }
+              },
+              "status": "Not Found",
+              "code": 404,
+              "_postman_previewlanguage": "json",
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": false,\n  \"error_code\": \"USER_NOT_FOUND\",\n  \"message\": \"User has not been enrolled yet\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Verify — User not yet enrolled (Error test)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 400 or 404', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([400, 404]);",
+                  "});",
+                  "",
+                  "pm.test('Response has success=false', function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.success).to.be.false;",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{api_key}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"nonexistent-user-99999\",\n  \"events\": [\n    { \"evt\": \"d\", \"key\": \"a\", \"code\": \"KeyA\", \"t\": 0 },\n    { \"evt\": \"u\", \"key\": \"a\", \"code\": \"KeyA\", \"t\": 80 },\n    { \"evt\": \"d\", \"key\": \"b\", \"code\": \"KeyB\", \"t\": 150 },\n    { \"evt\": \"u\", \"key\": \"b\", \"code\": \"KeyB\", \"t\": 230 }\n  ]\n}",
+              "options": {
+                "raw": { "language": "json" }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/verify",
+              "host": ["{{base_url}}"],
+              "path": ["verify"]
+            },
+            "description": "Test error case: verifikasi username yang belum pernah di-enroll."
+          },
+          "response": []
+        },
+        {
+          "name": "Verify — No Authorization header (Error test)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 401 or 403', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([401, 403]);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{username}}\",\n  \"events\": [\n    { \"evt\": \"d\", \"key\": \"a\", \"code\": \"KeyA\", \"t\": 0 },\n    { \"evt\": \"u\", \"key\": \"a\", \"code\": \"KeyA\", \"t\": 80 }\n  ]\n}",
+              "options": {
+                "raw": { "language": "json" }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/verify",
+              "host": ["{{base_url}}"],
+              "path": ["verify"]
+            },
+            "description": "Test error case: request tanpa Authorization header. Diharapkan 401 Unauthorized."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Simulation Website Proxy",
+      "description": "Folder untuk request ke endpoint proxy /secauth pada Simulasi Website (bukan langsung ke SecAuth).\n\nBase URL untuk folder ini adalah http://localhost:5001 (sesuaikan dengan port lokal Anda).",
+      "item": [
+        {
+          "name": "Proxy Enroll via /secauth",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200 or 201', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+                  "});",
+                  "",
+                  "pm.test('Response has enroll key', function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json).to.have.property('enroll');",
+                  "});",
+                  "",
+                  "pm.test('enroll.success is true', function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.enroll.success).to.be.true;",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{username}}\",\n  \"mode\": \"enroll\",\n  \"events\": [\n    { \"evt\": \"d\", \"key\": \"p\", \"code\": \"KeyP\", \"t\": 0.0 },\n    { \"evt\": \"u\", \"key\": \"p\", \"code\": \"KeyP\", \"t\": 82.5 },\n    { \"evt\": \"d\", \"key\": \"a\", \"code\": \"KeyA\", \"t\": 210.3 },\n    { \"evt\": \"u\", \"key\": \"a\", \"code\": \"KeyA\", \"t\": 295.1 },\n    { \"evt\": \"d\", \"key\": \"s\", \"code\": \"KeyS\", \"t\": 380.0 },\n    { \"evt\": \"u\", \"key\": \"s\", \"code\": \"KeyS\", \"t\": 461.2 },\n    { \"evt\": \"d\", \"key\": \"s\", \"code\": \"KeyS\", \"t\": 520.5 },\n    { \"evt\": \"u\", \"key\": \"s\", \"code\": \"KeyS\", \"t\": 601.3 },\n    { \"evt\": \"d\", \"key\": \"w\", \"code\": \"KeyW\", \"t\": 700.0 },\n    { \"evt\": \"u\", \"key\": \"w\", \"code\": \"KeyW\", \"t\": 780.5 },\n    { \"evt\": \"d\", \"key\": \"o\", \"code\": \"KeyO\", \"t\": 850.2 },\n    { \"evt\": \"u\", \"key\": \"o\", \"code\": \"KeyO\", \"t\": 930.8 },\n    { \"evt\": \"d\", \"key\": \"r\", \"code\": \"KeyR\", \"t\": 1010.0 },\n    { \"evt\": \"u\", \"key\": \"r\", \"code\": \"KeyR\", \"t\": 1097.4 },\n    { \"evt\": \"d\", \"key\": \"d\", \"code\": \"KeyD\", \"t\": 1180.0 },\n    { \"evt\": \"u\", \"key\": \"d\", \"code\": \"KeyD\", \"t\": 1260.6 }\n  ]\n}",
+              "options": {
+                "raw": { "language": "json" }
+              }
+            },
+            "url": {
+              "raw": "http://localhost:5001/secauth",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "5001",
+              "path": ["secauth"]
+            },
+            "description": "Memanggil endpoint proxy /secauth pada Simulasi Website dengan mode 'enroll'.\n\nEndpoint ini meneruskan request ke SecAuth server, lalu mengembalikan response dalam format:\n```json\n{\n  \"enroll\": { ... }\n}\n```"
+          },
+          "response": [
+            {
+              "name": "200 OK — Proxy Enroll berhasil",
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"enroll\": {\n    \"success\": true,\n    \"message\": \"Sample 1/10 saved\",\n    \"templates_count\": 1,\n    \"required_templates\": 10,\n    \"progress\": { \"complete\": false, \"current\": 1, \"target\": 10 }\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Proxy Verify via /secauth",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.expect(pm.response.code).to.equal(200);",
+                  "});",
+                  "",
+                  "pm.test('Response has verify key', function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json).to.have.property('verify');",
+                  "});",
+                  "",
+                  "pm.test('verify has success and verified fields', function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.verify).to.have.property('success');",
+                  "    pm.expect(json.verify).to.have.property('verified');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{username}}\",\n  \"mode\": \"verify\",\n  \"events\": [\n    { \"evt\": \"d\", \"key\": \"p\", \"code\": \"KeyP\", \"t\": 0.0 },\n    { \"evt\": \"u\", \"key\": \"p\", \"code\": \"KeyP\", \"t\": 79.2 },\n    { \"evt\": \"d\", \"key\": \"a\", \"code\": \"KeyA\", \"t\": 198.4 },\n    { \"evt\": \"u\", \"key\": \"a\", \"code\": \"KeyA\", \"t\": 280.6 },\n    { \"evt\": \"d\", \"key\": \"s\", \"code\": \"KeyS\", \"t\": 375.0 },\n    { \"evt\": \"u\", \"key\": \"s\", \"code\": \"KeyS\", \"t\": 455.3 },\n    { \"evt\": \"d\", \"key\": \"s\", \"code\": \"KeyS\", \"t\": 512.1 },\n    { \"evt\": \"u\", \"key\": \"s\", \"code\": \"KeyS\", \"t\": 594.7 },\n    { \"evt\": \"d\", \"key\": \"w\", \"code\": \"KeyW\", \"t\": 692.5 },\n    { \"evt\": \"u\", \"key\": \"w\", \"code\": \"KeyW\", \"t\": 770.1 },\n    { \"evt\": \"d\", \"key\": \"o\", \"code\": \"KeyO\", \"t\": 840.8 },\n    { \"evt\": \"u\", \"key\": \"o\", \"code\": \"KeyO\", \"t\": 920.4 },\n    { \"evt\": \"d\", \"key\": \"r\", \"code\": \"KeyR\", \"t\": 1001.0 },\n    { \"evt\": \"u\", \"key\": \"r\", \"code\": \"KeyR\", \"t\": 1088.2 },\n    { \"evt\": \"d\", \"key\": \"d\", \"code\": \"KeyD\", \"t\": 1170.5 },\n    { \"evt\": \"u\", \"key\": \"d\", \"code\": \"KeyD\", \"t\": 1250.9 }\n  ]\n}",
+              "options": {
+                "raw": { "language": "json" }
+              }
+            },
+            "url": {
+              "raw": "http://localhost:5001/secauth",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "5001",
+              "path": ["secauth"]
+            },
+            "description": "Memanggil endpoint proxy /secauth pada Simulasi Website dengan mode 'verify'.\n\nEndpoint ini meneruskan request ke SecAuth server, lalu mengembalikan response dalam format:\n```json\n{\n  \"verify\": { ... }\n}\n```"
+          },
+          "response": [
+            {
+              "name": "200 OK — Proxy Verify berhasil (genuine)",
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"verify\": {\n    \"success\": true,\n    \"verified\": true,\n    \"decision\": \"genuine\",\n    \"confidence_score\": 0.87,\n    \"confidence_label\": \"High\"\n  }\n}"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

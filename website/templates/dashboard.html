@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+<p class="eyebrow">Dashboard</p>
+<h1 id="greeting">Hello.</h1>
+<p class="lead">You're signed in. Your typing pattern matched.</p>
+
+<p style="margin-top: 40px;">
+  <a href="/login" id="logout-link" class="btn btn-ghost">Sign out</a>
+</p>
+
+<script>
+  (function () {
+    const email = sessionStorage.getItem("user_email");
+    const greeting = document.getElementById("greeting");
+    if (greeting) {
+      greeting.textContent = email ? "Hello, " + email + "." : "Hello.";
+    }
+    const logout = document.getElementById("logout-link");
+    if (logout) {
+      logout.addEventListener("click", function () {
+        sessionStorage.removeItem("user_id");
+        sessionStorage.removeItem("user_email");
+        sessionStorage.removeItem("enroll_count");
+      });
+    }
+  })();
+</script>
+{% endblock %}

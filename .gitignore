@@ -1,0 +1,12 @@
+.vscode
+.venv
+website/__pycache__
+website/database.db
+instance/
+*.pyc
+__pycache__/
+
+# Secrets — never commit
+.env
+.env.local
+.env.*.local
