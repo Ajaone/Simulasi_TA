@@ -20,13 +20,13 @@ Buktikan koneksi ke API jalan sebelum tulis kode apa pun.
 
 ### Yang perlu disiapkan
 
-- `BASE_URL` dari tim identitype (contoh: `https://api.identitype.example.com/api/partner`)
-- `API_KEY` dengan format `sk_live_...` dari tim identitype
+- **Base URL:** `https://identitype.duckdns.org/api/partner`
+- **API Key:** dengan format `sk_live_...` — daftar di dashboard identitype untuk dapat key
 
 ### Test koneksi dengan cURL
 
 ```bash
-curl -X POST <BASE_URL>/enroll \
+curl -X POST https://identitype.duckdns.org/api/partner/enroll \
   -H "Authorization: Bearer <YOUR_API_KEY>" \
   -H "Content-Type: application/json" \
   -d '{
@@ -197,7 +197,7 @@ def verify(username, events):
 
 ```python
 >>> import os
->>> os.environ["IDENTITYPE_BASE_URL"] = "https://api.identitype.example.com/api/partner"
+>>> os.environ["IDENTITYPE_BASE_URL"] = "https://identitype.duckdns.org/api/partner"
 >>> os.environ["IDENTITYPE_API_KEY"] = "sk_live_..."
 >>> from identitype import enroll
 >>> enroll("test-user", [{"evt":"d","key":"a","code":"KeyA","t":0}])
@@ -373,7 +373,7 @@ async function submitLogin(email, password, events) {
 
 | Var | Wajib | Contoh |
 |---|---|---|
-| `IDENTITYPE_BASE_URL` | ✅ | `https://api.identitype.example.com/api/partner` |
+| `IDENTITYPE_BASE_URL` | ✅ | `https://identitype.duckdns.org/api/partner` |
 | `IDENTITYPE_API_KEY` | ✅ | `sk_live_...` |
 | `IDENTITYPE_TIMEOUT_SECONDS` | optional | `30` |
 | `FLASK_SECRET_KEY` | ✅ | (random 32 char) |

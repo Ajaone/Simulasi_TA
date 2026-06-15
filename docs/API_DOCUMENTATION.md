@@ -1,6 +1,6 @@
 # identitype Keystroke Dynamics — API Documentation
 
-> **Base URL (identitype Server):** `<IDENTITYPE_BASE_URL>` — set per-environment (e.g. via `IDENTITYPE_BASE_URL` env var). HTTPS in production.
+> **Base URL (identitype Server):** `https://identitype.duckdns.org/api/partner` — set per-environment (e.g. via `IDENTITYPE_BASE_URL` env var). HTTPS in production.
 > **API Key:** `<YOUR_API_KEY>` — set via `IDENTITYPE_API_KEY` env var; never commit to source.
 > **Simulation Website Base URL:** `http://localhost:5000` *(adjust to your local port)*
 
@@ -103,7 +103,7 @@ Enrolls (saves) a user's typing pattern. Multiple enrollment samples are recomme
 #### Request
 
 ```
-POST <IDENTITYPE_BASE_URL>/enroll
+POST https://identitype.duckdns.org/api/partner/enroll
 Content-Type: application/json
 Authorization: Bearer <YOUR_API_KEY>
 ```
@@ -172,7 +172,7 @@ The user must have completed enrollment before calling this endpoint.
 #### Request
 
 ```
-POST <IDENTITYPE_BASE_URL>/verify
+POST https://identitype.duckdns.org/api/partner/verify
 Content-Type: application/json
 Authorization: Bearer <YOUR_API_KEY>
 ```
@@ -273,7 +273,7 @@ Import the file `docs/identitype_Postman_Collection.json` into Postman.
 
 1. Open Postman → **Import** → select `identitype_Postman_Collection.json`
 2. Go to **Collections → identitype Partner API → Variables**
-3. Set `base_url` to `<IDENTITYPE_BASE_URL>`
+3. Set `base_url` to `https://identitype.duckdns.org/api/partner`
 4. Set `api_key` to your Bearer token
 5. Set `username` to any UUID you want to test with
 
@@ -281,7 +281,7 @@ Import the file `docs/identitype_Postman_Collection.json` into Postman.
 
 **Enroll:**
 ```bash
-curl -X POST <IDENTITYPE_BASE_URL>/enroll \
+curl -X POST https://identitype.duckdns.org/api/partner/enroll \
   -H "Authorization: Bearer <YOUR_API_KEY>" \
   -H "Content-Type: application/json" \
   -d '{
@@ -301,7 +301,7 @@ curl -X POST <IDENTITYPE_BASE_URL>/enroll \
 
 **Verify:**
 ```bash
-curl -X POST <IDENTITYPE_BASE_URL>/verify \
+curl -X POST https://identitype.duckdns.org/api/partner/verify \
   -H "Authorization: Bearer <YOUR_API_KEY>" \
   -H "Content-Type: application/json" \
   -d '{
@@ -339,7 +339,7 @@ Simulation Website (Flask)
        │  POST /api/partner/enroll  or  /api/partner/verify
        │  Authorization: Bearer <API_KEY>
        ▼
-identitype Server (<IDENTITYPE_BASE_URL>)
+identitype Server (https://identitype.duckdns.org/api/partner)
 ```
 
 ---
@@ -460,7 +460,7 @@ The Flask proxy in `website/identitype.py` handles forwarding:
 # website/identitype.py — read secrets from environment, never hard-code.
 import os
 
-BASE_URL = os.getenv("IDENTITYPE_BASE_URL")  # e.g. https://api.identitype.example.com/api/partner
+BASE_URL = os.getenv("IDENTITYPE_BASE_URL")  # e.g. https://identitype.duckdns.org/api/partner
 API_KEY  = os.getenv("IDENTITYPE_API_KEY")   # sk_live_...
 
 def send_typing_data(username, events, mode="verify"):

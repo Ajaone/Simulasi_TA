@@ -2,13 +2,13 @@
   "info": {
     "_postman_id": "identitype-partner-api-v1",
     "name": "identitype Partner API",
-    "description": "Postman collection untuk API Partner identitype Keystroke Dynamics.\n\nEndpoints:\n- POST /api/partner/enroll  — Daftarkan pola ketikan pengguna\n- POST /api/partner/verify  — Autentikasi pengguna berdasarkan pola ketikan\n\nVariabel Collection:\n- base_url : <IDENTITYPE_BASE_URL>\n- api_key  : Bearer token dari identitype\n- username : UUID pengguna yang akan di-enroll/verify",
+    "description": "Postman collection untuk API Partner identitype Keystroke Dynamics.\n\nEndpoints:\n- POST /api/partner/enroll  — Daftarkan pola ketikan pengguna\n- POST /api/partner/verify  — Autentikasi pengguna berdasarkan pola ketikan\n\nVariabel Collection:\n- base_url : https://identitype.duckdns.org/api/partner\n- api_key  : Bearer token dari identitype\n- username : UUID pengguna yang akan di-enroll/verify",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
     {
       "key": "base_url",
-      "value": "<IDENTITYPE_BASE_URL>",
+      "value": "https://identitype.duckdns.org/api/partner",
       "type": "string"
     },
     {
