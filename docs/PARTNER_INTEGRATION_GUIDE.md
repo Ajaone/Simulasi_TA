@@ -1,196 +1,168 @@
-# identitype — Panduan Integrasi untuk Mitra
+# identitype — Partner Integration Guide
 
-> Manual praktis bagi mitra (partner) yang ingin menambahkan autentikasi
-> berbasis **keystroke dynamics** (ritme ketikan) ke website mereka,
-> menggunakan identitype Partner API.
->
-> Dokumen ini ditulis berdasarkan implementasi nyata pada website simulasi
-> di repository ini.
+Panduan integrasi API identitype ke website mitra. Ditulis supaya bisa diikuti
+dari atas ke bawah tanpa lompat-lompat.
 
----
-
-## Daftar Isi
-
-1. [Apa yang Anda Bangun](#1-apa-yang-anda-bangun)
-2. [Arsitektur](#2-arsitektur)
-3. [Yang Anda Butuhkan](#3-yang-anda-butuhkan)
-4. [Komponen Kode Minimal](#4-komponen-kode-minimal)
-5. [Alur User Lengkap](#5-alur-user-lengkap)
-6. [Implementasi Langkah demi Langkah](#6-implementasi-langkah-demi-langkah)
-7. [Penanganan Error](#7-penanganan-error)
-8. [Pelajaran dari Simulasi (Bug Umum)](#8-pelajaran-dari-simulasi-bug-umum)
-9. [Keamanan — Wajib Dibaca](#9-keamanan--wajib-dibaca)
-10. [Checklist Sebelum Produksi](#10-checklist-sebelum-produksi)
+> **Untuk siapa:** developer mitra yang baru pertama kali integrasi.
+> **Target waktu:** panggilan API pertama dalam 5 menit, integrasi lengkap dalam ~2 jam.
 
 ---
 
-## 1. Apa yang Anda Bangun
+## TL;DR
 
-identitype menambahkan **faktor kedua** ke flow login Anda. Selain password,
-sistem memverifikasi *ritme ketikan* user — kecepatan tiap tombol, jeda
-antar tombol, durasi penekanan. Pola ini sulit ditiru meskipun password
-bocor.
-
-**Dua operasi inti:**
-
-| Operasi | Kapan dipakai | Endpoint identitype |
-|---|---|---|
-| **Enroll** | Saat user baru daftar — rekam pola ketikan password mereka beberapa kali untuk melatih model | `POST /api/partner/enroll` |
-| **Verify** | Saat user login — cocokkan ritme ketikan saat ini dengan model yang sudah terlatih | `POST /api/partner/verify` |
-
-User harus enroll **beberapa sampel** sebelum bisa verify. Jumlah pastinya
-dikonfigurasi di sisi identitype dan dikembalikan via field `required_templates`
-(observasi lapangan: 5–10). **Jangan hard-code** — selalu baca dari response.
+**identitype** adalah layanan **keystroke biometrics** — selain password, sistem memverifikasi *ritme ketikan* user. User butuh **enroll** (latih model) sebelum bisa **verify** (autentikasi). Semua call ke API harus lewat **server mitra** (proxy), tidak langsung dari browser, karena ada API key.
 
 ---
 
-## 2. Arsitektur
+## 1. Quickstart (5 menit)
 
+Buktikan koneksi ke API jalan sebelum tulis kode apa pun.
+
+### Yang perlu disiapkan
+
+- `BASE_URL` dari tim identitype (contoh: `https://api.identitype.example.com/api/partner`)
+- `API_KEY` dengan format `sk_live_...` dari tim identitype
+
+### Test koneksi dengan cURL
+
+```bash
+curl -X POST <BASE_URL>/enroll \
+  -H "Authorization: Bearer <YOUR_API_KEY>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "username": "test-user-1",
+    "events": [
+      {"evt":"d","key":"a","code":"KeyA","t":0},
+      {"evt":"u","key":"a","code":"KeyA","t":85},
+      {"evt":"d","key":"b","code":"KeyB","t":210},
+      {"evt":"u","key":"b","code":"KeyB","t":295}
+    ]
+  }'
 ```
-┌─────────────────┐    keystroke events     ┌─────────────────┐    Bearer token     ┌─────────────────┐
-│                 │ ──────────────────────► │                 │ ──────────────────► │                 │
-│   Browser User  │                          │  Server Mitra   │                     │   identitype API   │
-│                 │ ◄──────────────────────  │   (proxy)       │ ◄────────────────── │                 │
-└─────────────────┘   match / no-match       └─────────────────┘   verdict + score   └─────────────────┘
+
+### Apa yang harus Anda lihat
+
+✅ **Sukses (HTTP 200/201):**
+```json
+{
+  "success": true,
+  "message": "Sample 1/10 saved",
+  "templates_count": 1,
+  "required_templates": 10,
+  "progress": { "current": 1, "target": 10 }
+}
+```
+→ Connectivity OK. Lanjut ke Section 2.
+
+❌ **HTTP 401 / `Invalid API key`:**
+→ API key salah atau di-revoke. Hubungi tim identitype.
+
+❌ **HTTP 404:**
+→ `BASE_URL` salah. Pastikan path-nya `.../api/partner` (bukan `.../api/v1` dll).
+
+❌ **Timeout / Connection refused:**
+→ Server identitype tidak bisa dihubungi. Cek firewall/VPN. Untuk dev lokal, tanya tim identitype IP/port yang benar.
+
+❌ **`INVALID_KEYSTROKE_DATA`:**
+→ Normal — payload contoh terlalu pendek. Yang penting connectivity sudah jalan.
+
+---
+
+## 2. Gotchas — Baca Dulu Sebelum Coding
+
+Lima hal yang sering bikin developer baru stuck. Pahami sekarang, hemat berjam-jam debug nanti.
+
+### G1 — `events` mengandung password plain-text
+
+Tiap event punya field `key` (`"key": "U"`, `"key": "m"`, dst). Disusun urut, mereka **mengeja literal password user**.
+
+Implikasi:
+- ✅ **HTTPS wajib** di kedua hop (browser↔mitra, mitra↔identitype)
+- ✅ **Jangan log payload** — log file Anda akan jadi kumpulan password
+- ❌ Jangan kirim payload via channel tidak terenkripsi
+
+### G2 — Target perekam **harus sama** antara enroll dan verify
+
+Kalau enrollment merekam keystroke di field `password` saja, login juga **hanya** boleh merekam `password`. Kalau saat verify Anda merekam `email + Tab + password`, model akan reject sebagai impostor.
+
+```javascript
+// ✅ Benar — sama di enroll & login
+recorder.addTarget("password");
+
+// ❌ Salah — login merekam lebih banyak dari enrollment
+recorder.addTarget("email");
+recorder.addTarget("password");
+```
+
+### G3 — Validasi password sebelum enroll
+
+User bisa mengetik password berbeda saat enrollment. Model jadi belajar ritme password salah → saat login dengan password benar, dianggap impostor.
+
+**Solusi:** sebelum kirim ke `/enroll`, validasi password yang diketik cocok dengan password akun. Lihat [G3 di implementasi](#c2-enrollment).
+
+### G4 — Jangan hardcode `required_templates`
+
+Server menentukan minimum sampel (5? 10? bisa berubah). Selalu **baca dari response**:
+
+```javascript
+const need = response.required_templates || response.min_templates;
+```
+
+### G5 — API key di server-only, tidak boleh di browser
+
+Kalau key ada di JavaScript browser, siapa pun bisa baca via DevTools, habiskan kuota Anda, dan enroll/verify atas nama Anda.
+
+→ **Semua call ke identitype harus lewat endpoint proxy di backend Anda.**
+
+---
+
+## 3. Arsitektur
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant B as Browser
+    participant M as Server Mitra
+    participant I as identitype API
+
+    Note over B,M: Saat user submit form login
+    B->>B: recorder.js menangkap keystroke
+    B->>M: POST /identitype { username, events, mode: "verify" }
+    Note over M: Validasi input + tambah API key
+    M->>I: POST /api/partner/verify (Bearer KEY)
+    I->>I: Match keystroke vs template
+    I-->>M: { verified, decision, confidence_score }
+    M-->>B: Forward response (tanpa API key)
+    B->>B: Jika verified → /dashboard
 ```
 
 **Tiga lapisan, tiga tanggung jawab:**
 
-1. **Browser** — merekam tiap `keydown` & `keyup` user di field password,
-   menyusunnya jadi array event JSON.
-2. **Server Mitra** — menerima event dari browser, menambahkan API key,
-   meneruskan ke identitype. Disebut "proxy" karena hanya melewatkan.
-3. **identitype API** — melatih atau memverifikasi pola ketikan, mengembalikan
-   verdict.
-
-> **Kenapa harus ada proxy?** API key identitype tidak boleh muncul di
-> JavaScript browser (siapa pun bisa membacanya via DevTools). Selalu
-> simpan di server.
+| Lapisan | Tugas |
+|---|---|
+| Browser | Merekam keystroke event (recorder.js) dan kirim ke proxy mitra |
+| Server Mitra | Validasi input + sisipkan API key + forward ke identitype |
+| identitype API | Train (enroll) atau verifikasi (verify) ritme ketikan |
 
 ---
 
-## 3. Yang Anda Butuhkan
+## 4. Implementasi
 
-- **API Key** identitype (format: `sk_live_...`) — didapat saat mendaftar
-  sebagai mitra.
-- **Backend** apa saja yang bisa kirim HTTP request (Flask, Express,
-  Laravel, Django, FastAPI, Spring, dll.). Tutorial ini pakai Flask.
-- **Frontend** yang punya akses ke `keydown`/`keyup` event browser
-  (semua framework modern bisa).
-- **Database** untuk menyimpan akun user dan ID user mereka di identitype.
+Tiga komponen yang harus Anda bangun. Kode di sini diambil langsung dari simulasi — bisa copy-paste, sesuaikan saja.
 
----
+### A. Backend — HTTP Client ke identitype
 
-## 4. Komponen Kode Minimal
+Buat satu file yang membungkus semua call ke identitype. Konfigurasi dari environment variable.
 
-Sebuah website mitra perlu **enam komponen**:
-
-| # | Komponen | Lokasi | Fungsi |
-|---|---|---|---|
-| 1 | Tabel user | DB | Simpan `email`, `password_hash`, dan `identitype_id` (UUID) |
-| 2 | Endpoint sign-up | Backend | Buat akun, generate `identitype_id` unik per user |
-| 3 | Endpoint login | Backend | Validasi password, kembalikan `identitype_id` |
-| 4 | Halaman enrollment | Frontend | Form input password, rekam keystroke, kirim ke proxy |
-| 5 | Halaman login | Frontend | Form login biasa + perekam keystroke |
-| 6 | Endpoint proxy | Backend | Teruskan event ke `/api/partner/enroll` atau `/verify` |
-
----
-
-## 5. Alur User Lengkap
-
-### Pendaftaran (sekali per user baru)
-
-```
-1. User isi form sign-up (email + password)
-2. Server: simpan user, generate UUID sebagai identitype_id
-3. Redirect ke halaman enrollment
-4. User mengetik password mereka — keystroke direkam
-5. Browser → Server (proxy) → identitype /enroll
-6. Ulangi langkah 4–5 sampai `progress.complete === true` (server menentukan jumlah; observasi: 5–10x)
-```
-
-### Login (setiap kali user masuk)
-
-```
-1. User isi form login (email + password)
-2. Server: validasi password
-3. Jika password benar → kembalikan identitype_id ke browser
-4. Browser kirim keystroke yang baru saja direkam → Server (proxy) → identitype /verify
-5. identitype respon: { verified: true, decision: "genuine", confidence_score: 0.92 }
-6. Jika verified=true → masuk ke dashboard. Jika false → blokir / minta ulang
-```
-
----
-
-## 6. Implementasi Langkah demi Langkah
-
-### Step 1 — Tabel User
+**`identitype.py`** (versi minimum):
 
 ```python
-# models.py
-import uuid
-from . import db
-from flask_login import UserMixin
-
-class User(db.Model, UserMixin):
-    id = db.Column(db.Integer, primary_key=True)
-    email = db.Column(db.String(150), unique=True)
-    password = db.Column(db.String(150))                                  # hash
-    identitype_id = db.Column(db.String(100), default=lambda: str(uuid.uuid4()))
-```
-
-> `identitype_id` adalah identifier yang Anda kirim ke identitype API sebagai
-> `username`. UUID acak lebih aman daripada email user (jangan kirim email
-> langsung ke pihak ketiga).
-
-### Step 2 — Sign-up & Login Endpoint
-
-```python
-# auth.py
-from flask import Blueprint, request, jsonify, make_response
-from werkzeug.security import generate_password_hash, check_password_hash
-from . import db
-from .models import User
-
-auth = Blueprint('auth', __name__)
-
-@auth.route("/api/sign-up", methods=["POST"])
-def api_sign_up():
-    data = request.get_json()
-    email, password = data.get("email"), data.get("password")
-
-    if User.query.filter_by(email=email).first():
-        return jsonify({"message": "Email is already used"}), 409
-    if len(password) < 7:
-        return jsonify({"message": "Password too short"}), 400
-
-    user = User(email=email, password=generate_password_hash(password))
-    db.session.add(user); db.session.commit()
-    return jsonify({"message": "Created", "user_id": user.identitype_id}), 201
-
-
-@auth.route("/api/login", methods=["POST"])
-def api_login():
-    data = request.get_json()
-    user = User.query.filter_by(email=data.get("email")).first()
-    if not user or not check_password_hash(user.password, data.get("password")):
-        return jsonify({"message": "Invalid email or password"}), 401
-    return jsonify({"message": "OK", "user_id": user.identitype_id}), 200
-```
-
-### Step 3 — Klien identitype (helper di server)
-
-Buat satu modul tipis yang membungkus panggilan ke identitype. Tujuannya:
-API key, timeout, dan error-handling hanya ada di satu tempat.
-
-```python
-# identitype_client.py
 import json
+import os
 import urllib.request, urllib.error
 
-import os
-BASE_URL = os.getenv("IDENTITYPE_BASE_URL")  # e.g. https://api.identitype.example.com/api/partner
-API_KEY  = os.getenv("IDENTITYPE_API_KEY")   # sk_live_... — JANGAN expose ke frontend
+BASE_URL = os.getenv("IDENTITYPE_BASE_URL")
+API_KEY  = os.getenv("IDENTITYPE_API_KEY")
 
 def _post(endpoint, payload):
     req = urllib.request.Request(
@@ -199,123 +171,150 @@ def _post(endpoint, payload):
         method="POST",
         headers={
             "Authorization": f"Bearer {API_KEY}",
-            "Content-Type":  "application/json",
+            "Content-Type": "application/json",
         },
     )
     try:
         with urllib.request.urlopen(req, timeout=30) as res:
-            return json.loads(res.read().decode("utf-8")), res.status
+            return json.loads(res.read())
     except urllib.error.HTTPError as e:
-        body = json.loads(e.read().decode("utf-8") or "{}")
-        body.setdefault("success", False)
+        body = json.loads(e.read() or b"{}")
         body["http_status"] = e.code
-        return body, e.code
+        return body
+    except Exception:
+        return {"success": False, "error_code": "SERVICE_UNAVAILABLE"}
 
-def enroll(identitype_id, events):
-    return _post("enroll", {"username": identitype_id, "events": events})
+def enroll(username, events):
+    return _post("enroll", {"username": username, "events": events})
 
-def verify(identitype_id, events):
-    return _post("verify", {"username": identitype_id, "events": events})
+def verify(username, events):
+    return _post("verify", {"username": username, "events": events})
 ```
 
-### Step 4 — Endpoint Proxy
+> **Versi production-ready** ada di [website/identitype.py](../website/identitype.py) — lengkap dengan timeout terpisah, sanitasi pesan error, logging metadata (tanpa payload), dan penanganan timeout/network error secara terpisah.
+
+#### Test cepat dari Python REPL:
+
+```python
+>>> import os
+>>> os.environ["IDENTITYPE_BASE_URL"] = "https://api.identitype.example.com/api/partner"
+>>> os.environ["IDENTITYPE_API_KEY"] = "sk_live_..."
+>>> from identitype import enroll
+>>> enroll("test-user", [{"evt":"d","key":"a","code":"KeyA","t":0}])
+{'success': True, 'templates_count': 1, ...}
+```
+
+✅ Kalau dapat `success: True`, lanjut.
+
+---
+
+### B. Backend — Endpoint Proxy
+
+Browser tidak boleh punya API key. Jadi browser kirim ke **endpoint Anda**, server Anda yang panggil identitype.
 
 ```python
 # views.py
 from flask import Blueprint, request, jsonify
-from .identitype_client import enroll, verify
+from .identitype import enroll, verify
 
 views = Blueprint("views", __name__)
 
 @views.route("/identitype", methods=["POST"])
 def identitype_proxy():
     data = request.get_json() or {}
-    user_id = data.get("username")
-    events  = data.get("events")
-    mode    = data.get("mode", "verify")
+    username = data.get("username")
+    events   = data.get("events")
+    mode     = data.get("mode", "verify")
 
-    if not user_id or not isinstance(events, list) or not events:
+    if not username or not isinstance(events, list) or not events:
         return jsonify({"error": "Bad request"}), 400
 
-    if mode == "enroll":
-        body, status = enroll(user_id, events)
-        return jsonify({"enroll": body}), status
-    else:
-        body, status = verify(user_id, events)
-        return jsonify({"verify": body}), status
+    result = enroll(username, events) if mode == "enroll" else verify(username, events)
+    return jsonify({mode: result}), (200 if result.get("success") else 400)
 ```
 
-### Step 5 — Perekam Keystroke di Browser
+#### Test dari shell:
 
-Pakai `recorder.js` dari simulasi ini (lihat
-[`website/static/recorder.js`](../website/static/recorder.js)). Tinggal
-import dan instantiate:
+```bash
+curl -X POST http://localhost:5000/identitype \
+  -H "Content-Type: application/json" \
+  -d '{"username":"test-1","events":[{"evt":"d","key":"a","code":"KeyA","t":0}],"mode":"enroll"}'
+```
+
+✅ Harus dapat: `{"enroll": {"success": true, ...}}`.
+
+---
+
+### C. Frontend — Flow Enroll + Verify
+
+Tiga bagian: perekam keystroke, halaman enrollment, halaman login.
+
+#### C.1 Drop-in `recorder.js`
+
+Copy [website/static/recorder.js](../website/static/recorder.js) apa adanya. Vanilla JS, tidak butuh framework.
+
+Cara pakai:
 
 ```javascript
 import { Keystroke } from "./recorder.js";
 
 const recorder = new Keystroke();
+recorder.addTarget("password");   // hanya rekam field ini (lihat G2)
 
-// Daftarkan input mana yang akan direkam.
-// PENTING: target saat enroll dan verify HARUS sama.
-recorder.addTarget("password");
-
-// Ambil event saat user submit:
+// Saat user submit form:
 const events = recorder.getEvents();
+recorder.reset();
 ```
 
-### Step 6 — Frontend: Halaman Enrollment
+#### C.2 Enrollment
 
 ```javascript
-async function submitEnrollment(identitypeId, password) {
-  // 1. Pastikan password yang diketik sama dengan yang didaftarkan
-  //    (lihat bagian "Pelajaran dari Simulasi" untuk alasannya)
-  const v = await fetch("/api/verify-password", {
+async function submitEnrollment(userId, password, events) {
+  // ⚠️ G3 — validasi password cocok dengan akun dulu
+  const check = await fetch("/api/verify-password", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ user_id: identitypeId, password }),
+    body: JSON.stringify({ user_id: userId, password }),
   }).then(r => r.json());
 
-  if (!v.match) {
-    showError("Password tidak cocok dengan yang Anda daftarkan.");
+  if (!check.match) {
+    showError("Password tidak cocok dengan akun Anda.");
     return;
   }
 
-  // 2. Kirim keystroke ke proxy mode enroll
-  const events = recorder.getEvents();
+  // OK, kirim keystroke
   const res = await fetch("/identitype", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      username: identitypeId,
-      events: events,
-      mode: "enroll",
-    }),
+    body: JSON.stringify({ username: userId, events, mode: "enroll" }),
   });
 
-  const body = await res.json();
-  const api  = body.enroll || {};
+  const { enroll: data } = await res.json();
 
-  if (api.success) {
-    showInfo(`Tersimpan ${api.templates_count} / ${api.required_templates}`);
-    if (api.templates_count >= api.required_templates) {
+  if (data.success) {
+    // G4 — baca progress dari response, jangan hardcode
+    const current = data.progress?.current ?? data.templates_count;
+    const target  = data.progress?.target  ?? data.required_templates;
+
+    if (current >= target) {
+      // ✅ Selesai
       window.location.href = "/login";
     } else {
-      window.location.reload();  // enroll lagi
+      // Belum cukup, enroll lagi
+      showInfo(`Tersimpan ${current}/${target}. Enroll lagi.`);
+      window.location.reload();
     }
   } else {
-    showError(api.message || "Enrollment gagal");
+    showError(data.message);
   }
-
-  recorder.reset();
 }
 ```
 
-### Step 7 — Frontend: Halaman Login + Verify
+#### C.3 Login + Verify
 
 ```javascript
-async function loginAndVerify(email, password) {
-  // 1. Validasi password biasa
+async function submitLogin(email, password, events) {
+  // Step 1: validasi password biasa
   const login = await fetch("/api/login", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -327,367 +326,102 @@ async function loginAndVerify(email, password) {
     return;
   }
 
-  // 2. Verifikasi pola ketikan
-  const events = recorder.getEvents();
+  // Step 2: verifikasi ritme ketikan
   const res = await fetch("/identitype", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      username: login.user_id,
-      events: events,
-      mode: "verify",
-    }),
+    body: JSON.stringify({ username: login.user_id, events, mode: "verify" }),
   });
 
-  const body = await res.json();
-  const api  = body.verify || {};
+  const { verify: data } = await res.json();
 
-  if (api.success && api.verified && api.decision === "genuine") {
+  if (data.success && data.verified && data.decision === "genuine") {
     window.location.href = "/dashboard";
   } else {
-    showError(`Pola ketikan tidak cocok (confidence: ${api.confidence_score})`);
+    showError("Pola ketikan tidak cocok.");
   }
-
-  recorder.reset();
 }
 ```
 
-### Step 8 — Endpoint Validasi Password (opsional tapi disarankan)
+#### ✅ Flow lengkap yang harus berhasil:
 
-```python
-# auth.py — tambahkan endpoint ini
-@auth.route("/api/verify-password", methods=["POST"])
-def api_verify_password():
-    data = request.get_json() or {}
-    user = User.query.filter_by(identitype_id=data.get("user_id")).first()
-    if not user or not check_password_hash(user.password, data.get("password", "")):
-        return jsonify({"match": False, "message": "Password tidak cocok"}), 401
-    return jsonify({"match": True}), 200
-```
-
-Lihat bagian [Pelajaran dari Simulasi](#8-pelajaran-dari-simulasi-bug-umum)
-untuk alasan kenapa langkah ini penting.
+1. Sign Up → akun dibuat, redirect ke enrollment
+2. Enroll 5–10x → progress naik tiap submit → selesai, redirect ke login
+3. Login → password OK + ritme ketikan match → redirect ke dashboard
 
 ---
 
-## 7. Penanganan Error
+## 5. Production Checklist
 
-Field yang penting di setiap respons identitype:
-
-| Field | Arti |
+| Area | Item |
 |---|---|
-| `success` | `false` artinya request ditolak |
-| `error_code` | Kode mesin (lihat tabel di bawah) |
-| `message` | Pesan untuk ditampilkan / dilog |
-| `verified` | (verify) `true` jika ritme cocok |
-| `decision` | (verify) `"genuine"` atau `"impostor"` |
-| `confidence_score` | (verify) 0.0–1.0 |
-| `templates_count` / `required_templates` | (enroll) progress enrollment |
+| **Secrets** | API key di env var, bukan source. `.env` di `.gitignore`. |
+| **Transport** | HTTPS di browser↔mitra dan mitra↔identitype. |
+| **Logging** | Hanya metadata (mode, count, decision). Tidak pernah `print(payload)`. |
+| **Auth** | `username` di proxy ambil dari **session server-side**, bukan body request. |
+| **Validasi** | Schema check `events` (array, max ~1000 events, max ~256KB body). |
+| **Rate limit** | Per-user di sisi mitra (mis. 5 verify/menit), berlapis dengan rate limit identitype. |
+| **Lockout** | Setelah N gagal verify berturut-turut, lock akun + email notif. |
+| **Privacy** | Disclosure di privacy notice (GDPR Art. 9 / UU PDP) — data biometrik dikirim ke pihak ketiga. |
+| **Opt-out** | User bisa pilih tidak pakai keystroke + bisa hapus template. |
 
-### Kode Error yang Wajib Ditangani
+---
 
-| `error_code` | Mode | Aksi yang disarankan |
+## 6. Reference
+
+### Environment Variables
+
+| Var | Wajib | Contoh |
 |---|---|---|
-| `INSUFFICIENT_SAMPLES` | verify | User belum cukup enroll → arahkan kembali ke halaman enrollment |
-| `INSUFFICIENT_ENROLLMENT` | verify | Sama seperti di atas |
-| `INVALID_KEYSTROKE_DATA` | both | Data terlalu pendek / inkonsisten → minta user ulang dengan tip ("ketik natural, hindari backspace") |
-| `INVALID_USERNAME` | both | `username` tidak terdaftar di identitype — biasanya user belum pernah enroll |
-| `RATE_LIMIT_EXCEEDED` | both | Tunggu beberapa saat, jangan retry otomatis tanpa backoff |
-| `UNKNOWN` / `null` + status 4xx | verify | Model masih training — tampilkan info, suruh coba lagi |
+| `IDENTITYPE_BASE_URL` | ✅ | `https://api.identitype.example.com/api/partner` |
+| `IDENTITYPE_API_KEY` | ✅ | `sk_live_...` |
+| `IDENTITYPE_TIMEOUT_SECONDS` | optional | `30` |
+| `FLASK_SECRET_KEY` | ✅ | (random 32 char) |
+| `FLASK_DEBUG` | optional | `0` di production |
+
+### Error Codes
+
+| `error_code` | HTTP | Arti | Aksi yang disarankan |
+|---|---|---|---|
+| `INVALID_KEYSTROKE_DATA` | 400 | Event terlalu pendek/aneh | Minta user ketik ulang dengan natural |
+| `INSUFFICIENT_SAMPLES` / `INSUFFICIENT_ENROLLMENT` | 400 | Belum cukup template | Arahkan kembali ke enrollment |
+| `INVALID_USERNAME` | 400 | Username belum terdaftar di identitype | Belum pernah enroll |
+| `RATE_LIMIT_EXCEEDED` | 429 | Terlalu banyak request | Backoff + Retry-After header |
+| `USER_NOT_FOUND` | 404 | User belum enroll | Redirect ke enrollment |
+| `SERVICE_UNAVAILABLE` / `SERVICE_TIMEOUT` | — | Server tidak bisa dihubungi | Toast warning kuning, retry manual |
+| `UPSTREAM_ERROR` | 5xx | Server identitype error | Tampilkan generic message |
+
+### Map File di Simulasi
+
+Implementasi nyata dari setiap komponen di atas:
+
+| Komponen | File |
+|---|---|
+| HTTP client ke identitype | [website/identitype.py](../website/identitype.py) |
+| Endpoint proxy `/identitype` | [website/views.py](../website/views.py) |
+| Endpoint `/api/verify-password` (G3) | [website/auth.py](../website/auth.py) |
+| Model User dengan UUID | [website/models.py](../website/models.py) |
+| Perekam keystroke (drop-in) | [website/static/recorder.js](../website/static/recorder.js) |
+| Logika frontend (enroll + verify) | [website/static/index.js](../website/static/index.js) |
+| Form enrollment | [website/templates/typing_patterns.html](../website/templates/typing_patterns.html) |
+| Form login | [website/templates/login.html](../website/templates/login.html) |
+| Toast (pengganti `alert`) | [website/static/toast.js](../website/static/toast.js) |
+| Setup app + env loading | [main.py](../main.py), [website/__init__.py](../website/__init__.py) |
+
+### Dokumen Terkait
+
+- [API_DOCUMENTATION.md](./API_DOCUMENTATION.md) — request/response per endpoint, lengkap.
+- [identitype_Postman_Collection.json](./identitype_Postman_Collection.json) — import ke Postman.
+- Branch `vanilla` di repo ini — versi tanpa biometric, sebagai pembanding.
 
 ---
 
-## 8. Pelajaran dari Simulasi (Bug Umum)
+## Stuck?
 
-Bug-bug ini kami temukan saat membangun simulasi. Hindari sejak awal.
-
-### 8.1 Target perekam HARUS sama antara enroll dan verify
-
-❌ **Salah:** saat enroll merekam hanya `password`, saat login merekam
-`email` + `password`.
-
-✅ **Benar:** keduanya hanya merekam `password`.
-
-Kalau berbeda, model dilatih pada pola yang tidak akan pernah user ulangi
-saat login. Hasil verify pasti `impostor`.
-
-### 8.2 Validasi password sebelum enroll
-
-User bisa saja mengetik password yang berbeda saat enrollment
-(karena form-nya hanya menerima input bebas). Model jadi belajar ritme
-password yang salah → saat login, ritme password yang benar dianggap
-impostor.
-
-**Solusi:** validasi password ke database sebelum mengirim keystroke ke
-`/enroll` (lihat Step 8 di atas).
-
-### 8.3 Submit ganda
-
-Kalau form punya `<button type="submit">` dan Anda pasang listener di
-**button click** **dan** **form submit**, keduanya akan jalan saat user
-klik tombol. Hasilnya: dua kali fetch, dua kali toast, kemungkinan dua
-sampel enrollment terkirim.
-
-**Solusi:** pakai **hanya** listener `submit` di form.
-
-### 8.4 Jangan reset email field saat gagal autentikasi
-
-Setelah login gagal, kosongkan **hanya password**. Memaksa user mengetik
-ulang email-nya menyebalkan dan tidak menambah keamanan.
-
-### 8.5 Default `required_templates` jangan di-hardcode
-
-identitype bisa mengubah minimum sampel (saat ini 5). Selalu baca nilai dari
-respons API, gunakan fallback hanya jika field tidak ada:
-
-```javascript
-const required = api.required_templates || api.min_templates || 5;
-```
-
-### 8.6 API key tidak boleh ada di browser
-
-Selalu lewat server proxy. Jika API key bocor, siapa pun bisa enroll/verify
-atas nama Anda dan menghabiskan kuota Anda.
-
-### 8.7 Simpan progress enrollment di server, bukan sessionStorage
-
-`sessionStorage` hilang saat user tutup tab atau ganti device.
-Idealnya `templates_count` dibaca dari respons identitype setiap kali, bukan
-dihitung sendiri di client.
-
----
-
-## 9. Keamanan — Wajib Dibaca
-
-Kenyataan yang harus Anda pahami sebelum deploy:
-
-### 9.1 Password user **terbaca** dari payload keystroke
-
-Setiap event berisi field `key` (contoh: `"key": "U"`, `"key": "m"`).
-Disusun berurutan, mereka **literal mengeja password user**. Artinya
-siapa pun yang bisa membaca payload — proxy MITM, log server, Burp
-history, database identitype — bisa merekonstruksi password.
-
-Ini sifat inheren dari sistem keystroke dynamics: identitype butuh tahu
-karakter mana yang ditekan untuk analisis pola. Jadi tugas mitigasi
-**bukan menyembunyikan datanya**, melainkan:
-
-| Aksi | Tujuan |
+| Gejala | Kemungkinan |
 |---|---|
-| **HTTPS wajib di semua lapisan** | Browser↔mitra dan mitra↔identitype. Tanpa TLS, password plain text di kabel. |
-| **Jangan log payload** | Log hanya metadata: mode, jumlah event, success/decision. Lihat [identitype.py](../website/identitype.py) — di simulasi `print(payload)` sudah dihapus. |
-| **API key di env var** | Tidak boleh hard-coded di source code. |
-| **Username = UUID, bukan email** | Jangan kirim PII ke pihak ketiga sebagai identifier. |
-
-### 9.2 Proxy server-to-server: kenapa Burp tidak melihatnya
-
-Saat browser ↔ Flask di-proxy lewat Burp, request itu **terlihat**.
-Tapi Flask ↔ identitype lewat `urllib` Python yang tidak ikut proxy
-browser — itulah kenapa request kedua tidak muncul di Burp history.
-
-Untuk debugging dengan Burp:
-
-```powershell
-$env:HTTP_PROXY  = "http://127.0.0.1:8080"
-$env:HTTPS_PROXY = "http://127.0.0.1:8080"
-python main.py
-```
-
-**Jangan pakai ini di produksi.**
-
-### 9.3 Konfigurasi via Environment Variable
-
-Simulasi ini sekarang membaca semua secret dari env (lihat
-[.env.example](../.env.example)):
-
-```bash
-IDENTITYPE_BASE_URL=https://api.identitype.example.com/api/partner
-IDENTITYPE_API_KEY=<your-identitype-api-key>
-IDENTITYPE_TIMEOUT_SECONDS=30
-FLASK_SECRET_KEY=<random 32+ chars>
-FLASK_DEBUG=0
-```
-
-Cara load di Python tanpa dependency tambahan:
-
-```python
-# identitype.py
-import os
-API_KEY  = os.getenv("IDENTITYPE_API_KEY",  "")
-BASE_URL = os.getenv("IDENTITYPE_BASE_URL", "")
-```
-
-Untuk dev convenience pakai `python-dotenv`:
-
-```bash
-pip install python-dotenv
-```
-
-```python
-# main.py paling atas
-from dotenv import load_dotenv; load_dotenv()
-```
-
-### 9.4 Pesan Error: Apa yang Boleh Diteruskan ke Client
-
-Aturan: detail teknis di log, pesan generic di response.
-
-| Skenario | Yang ditampilkan ke user | Yang di-log server-side |
-|---|---|---|
-| Network unreachable | `"Service temporarily unavailable"` | `WinError 10060`, hostname, errno |
-| Timeout | `"Service did not respond in time"` | `socket.timeout`, durasi |
-| 5xx upstream | `"Service returned an error"` | Status code, response body |
-| 4xx upstream dengan `error_code` | Pesan dari identitype (sudah aman) | Sama + http_status |
-
-Implementasinya di [identitype.py](../website/identitype.py) — `urllib.error.URLError`,
-`socket.timeout`, dan `HTTPError 5xx` semua disanitasi.
-
-### 9.5 Validasi Input di Proxy
-
-Endpoint `/identitype` mitra **tidak boleh** percaya begitu saja apa yang
-dikirim browser. Validasi sebelum forward:
-
-- `username` non-empty dan berasal dari user yang sedang login
-  (cocokkan dengan session — di simulasi belum, tapi wajib di produksi)
-- `events` adalah array non-empty
-- `mode` ∈ {`enroll`, `verify`}
-- Batas atas jumlah event (mis. 5000) untuk cegah abuse
-
-Tanpa ini, user A bisa kirim username user B dan menggangu
-enrollment/verify orang lain.
-
-### 9.6 Session Binding (Belum ada di Simulasi — Wajib di Prod)
-
-Saat ini frontend simulasi menyimpan `user_id` di `sessionStorage` dan
-mengirimnya ke `/identitype`. Server menerimanya apa adanya. **Ini tidak
-aman.** Di produksi:
-
-1. Setelah login berhasil → server set Flask session (`session["user_id"] = ...`)
-2. Endpoint `/identitype` baca `user_id` dari session, **abaikan body request**
-3. Sehingga client tidak bisa mengubah username untuk membajak enrollment
-   orang lain
-
-### 9.7 Yang Bergantung pada Sisi identitype (Bukan Mitra)
-
-Beberapa kontrol keamanan tidak bisa Anda lakukan dari mitra — harus
-diterapkan oleh tim identitype: TLS endpoint, encryption at rest untuk
-template biometrik, rate limiting per-username, rotasi API key, dan
-sanitasi error response. Koordinasi dengan tim penyedia API untuk
-memastikan kontrol-kontrol ini ada sebelum go-live.
-
----
-
-## 10. Checklist Sebelum Produksi
-
-### Keamanan
-- [ ] **HTTPS** untuk browser ↔ Anda (TLS dari reverse proxy)
-- [ ] **HTTPS** untuk Anda ↔ identitype (`IDENTITYPE_BASE_URL=https://…`)
-- [ ] API key di environment variable, bukan source code
-- [ ] `FLASK_SECRET_KEY` di env, 32+ karakter acak
-- [ ] `FLASK_DEBUG=0` di produksi (interactive debugger = RCE bagi attacker)
-- [ ] Endpoint `/identitype` proxy hanya bisa dipanggil oleh user yang
-      sudah login; `username` diambil dari **session**, bukan body request
-- [ ] Validasi `events` di server: array, non-empty, max length wajar
-- [ ] Rate limit di endpoint proxy mitra (mis. 5 req/menit per user)
-- [ ] Password user di-hash dengan `werkzeug.security` atau setara
-      (di simulasi ini sudah, lihat [auth.py](../website/auth.py))
-- [ ] CORS dikonfigurasi ketat di domain Anda
-- [ ] **Logging hanya metadata** — tidak pernah `print(events)` atau
-      `print(payload)`. Lihat [identitype.py](../website/identitype.py) dan
-      [views.py](../website/views.py)
-- [ ] `.env` ada di `.gitignore`; pastikan tidak masuk git history
-
-### Reliability
-- [ ] Timeout pada panggilan ke identitype (kami pakai 30 detik)
-- [ ] Tangani `503`/`502` dari identitype dengan graceful fallback
-- [ ] Logging request/response (jangan log password!)
-
-### UX
-- [ ] Tampilkan progress enrollment (`3 of 5`)
-- [ ] Jangan pakai `alert()` — pakai toast/inline message
-- [ ] Setelah verify gagal, kosongkan **hanya password**, fokus ke field
-      password, biarkan email tetap
-- [ ] Sediakan "Forgot rhythm?" / cara re-enroll untuk user yang
-      ritmenya berubah (misal cedera tangan)
-
-### Compliance
-- [ ] Beri tahu user di privacy notice bahwa data ritme ketikan dikirim
-      ke pihak ketiga (identitype)
-- [ ] Jangan kirim PII (email, nama) sebagai `username` identitype — pakai
-      UUID acak
-
----
-
-## Referensi File di Simulasi
-
-Daftar semua file yang ada di repository ini beserta peran masing-masing.
-Gunakan ini sebagai peta saat membaca code.
-
-### Akar Project
-
-| File | Peran |
-|---|---|
-| [`main.py`](../main.py) | Entry point. Load `.env`, buat Flask app, jalankan server. |
-| [`requirements.txt`](../requirements.txt) | Dependency Python: Flask, Flask-SQLAlchemy, Flask-Login, python-dotenv. |
-| [`.env.example`](../.env.example) | Template environment variable. Copy ke `.env` lalu isi nilai asli. |
-| `.env` | **Tidak di-commit.** Isi: `IDENTITYPE_BASE_URL`, `IDENTITYPE_API_KEY`, `FLASK_SECRET_KEY`. |
-| [`.gitignore`](../.gitignore) | Daftar file yang TIDAK boleh masuk git: `.env`, `instance/`, `.venv`, dll. |
-| [`README.md`](../README.md) | Ringkasan project + cara setup singkat. |
-
-### Backend Flask — `website/`
-
-| File | Peran |
-|---|---|
-| [`__init__.py`](../website/__init__.py) | App factory. Load `FLASK_SECRET_KEY` dari env, register blueprint, init database. |
-| [`models.py`](../website/models.py) | Model `User` (SQLAlchemy): kolom `email`, `password` (hash), dan UUID identifier yang dikirim ke identitype sebagai `username`. |
-| [`auth.py`](../website/auth.py) | Endpoint JSON: `/api/sign-up`, `/api/login`, `/api/verify-password`. Pakai `werkzeug.security` untuk hash + compare password. |
-| [`views.py`](../website/views.py) | Endpoint halaman (home, dashboard, enrollment) + **endpoint proxy `/identitype`** yang menerima keystroke dari browser dan meneruskan ke API identitype. |
-| [`identitype.py`](../website/identitype.py) | **Klien HTTP ke API identitype.** Baca `IDENTITYPE_*` env, kirim Bearer token, sanitize error message sebelum dikirim balik ke browser. Tidak pernah log payload. |
-
-### Frontend Static — `website/static/`
-
-| File | Peran |
-|---|---|
-| [`recorder.js`](../website/static/recorder.js) | **Library perekam keystroke.** Class `Keystroke` yang attach ke input field, rekam keydown/keyup, kembalikan array event. Drop-in module — bisa dipakai standalone. |
-| [`index.js`](../website/static/index.js) | Glue frontend: bind form submit, panggil `/api/login` lalu `/identitype`, handle error code, redirect ke dashboard saat verify sukses. |
-| [`toast.js`](../website/static/toast.js) | Komponen notifikasi minim (pengganti `alert()`). Expose `window.toast.success/error/warning/info`. |
-| [`toast.css`](../website/static/toast.css) | Styling untuk toast — slide-in dari top-right, auto-dismiss. |
-| [`style.css`](../website/static/style.css) | Stylesheet utama. Font Fraunces + Inter, palette minimalis. |
-
-### Frontend Templates — `website/templates/`
-
-| File | Peran |
-|---|---|
-| [`base.html`](../website/templates/base.html) | Layout induk: nav, toast container, link CSS/JS. Semua page extends ini. |
-| [`home.html`](../website/templates/home.html) | Landing page dengan dua CTA (sign-up / login). |
-| [`sign_up.html`](../website/templates/sign_up.html) | Form pendaftaran. Submit → `/api/sign-up` → redirect ke enrollment. |
-| [`typing_patterns.html`](../website/templates/typing_patterns.html) | Form enrollment. User mengetik password berulang-kali; tiap submit kirim keystroke ke `/identitype` mode `enroll`. |
-| [`login.html`](../website/templates/login.html) | Form login. Submit → `/api/login` → `/identitype` mode `verify` → dashboard. |
-| [`dashboard.html`](../website/templates/dashboard.html) | Halaman setelah login sukses: `Hello, <email>` + tombol sign out. |
-
-### Database
-
-| Path | Peran |
-|---|---|
-| `instance/database.db` | **Tidak di-commit.** SQLite database lokal yang dibuat otomatis saat `python main.py` pertama kali. Berisi akun user (email + hash password + UUID identifier identitype). |
-
-### Dokumentasi — `docs/`
-
-| File | Peran |
-|---|---|
-| [`API_DOCUMENTATION.md`](./API_DOCUMENTATION.md) | Reference lengkap REST API identitype: request/response per endpoint, error codes, contoh cURL. |
-| [`PARTNER_INTEGRATION_GUIDE.md`](./PARTNER_INTEGRATION_GUIDE.md) | **Dokumen ini.** Panduan implementasi step-by-step + best practice. |
-| [`identitype_Postman_Collection.json`](./identitype_Postman_Collection.json) | Postman collection siap import untuk testing endpoint `enroll` & `verify`. |
-
-### Yang Wajib Mitra Punya (Minimum)
-
-Kalau Anda implementasi ulang di stack lain, **minimal** enam komponen ini:
-
-1. **Sebuah klien HTTP** ke identitype (analog [`identitype.py`](../website/identitype.py)) — baca API key dari env, kirim Bearer token, sanitize error.
-2. **Endpoint proxy** di backend Anda (analog [`views.py /identitype`](../website/views.py)) — validasi input, panggil klien #1, return response ke browser.
-3. **Perekam keystroke** di frontend (analog [`recorder.js`](../website/static/recorder.js)) — bisa pakai file ini langsung sebagai drop-in.
-4. **Form enrollment** yang merekam password user beberapa kali (analog [`typing_patterns.html`](../website/templates/typing_patterns.html)).
-5. **Form login** yang merekam keystroke + kirim ke proxy mode `verify` (analog [`login.html`](../website/templates/login.html) + bagian relevan di [`index.js`](../website/static/index.js)).
-6. **Tabel user** dengan kolom UUID untuk identifier yang dikirim ke identitype sebagai `username` (analog [`models.py`](../website/models.py)).
-
-Setiap komponen ini bisa Anda copy-adapt dari simulasi.
+| `key=sk_live_REPL…` di log | `.env` belum di-load, tambah `from dotenv import load_dotenv; load_dotenv()` di `main.py` |
+| `Bad request version \x16\x03\x01` di log server | `BASE_URL` pakai `https://` tapi server hanya HTTP. Ganti scheme. |
+| `decision: impostor` padahal password benar | Lihat **G2** — target perekam beda antara enroll dan verify |
+| Selalu `INSUFFICIENT_SAMPLES` setelah enroll banyak kali | Sample-nya ditolak sebagai "unusable" (ketikan terlalu kacau). Ketik lebih konsisten. |
+| Toast pesan double | Form punya listener di button click **dan** form submit — pilih salah satu (submit lebih baik) |

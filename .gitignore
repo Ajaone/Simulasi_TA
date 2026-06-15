@@ -1,5 +1,6 @@
 .vscode
 .venv
+.claude
 website/__pycache__
 website/database.db
 instance/
