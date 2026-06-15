@@ -1,8 +1,8 @@
-# SecAuth — Panduan Integrasi untuk Mitra
+# identitype — Panduan Integrasi untuk Mitra
 
 > Manual praktis bagi mitra (partner) yang ingin menambahkan autentikasi
 > berbasis **keystroke dynamics** (ritme ketikan) ke website mereka,
-> menggunakan SecAuth Partner API.
+> menggunakan identitype Partner API.
 >
 > Dokumen ini ditulis berdasarkan implementasi nyata pada website simulasi
 > di repository ini.
@@ -26,20 +26,20 @@
 
 ## 1. Apa yang Anda Bangun
 
-SecAuth menambahkan **faktor kedua** ke flow login Anda. Selain password,
+identitype menambahkan **faktor kedua** ke flow login Anda. Selain password,
 sistem memverifikasi *ritme ketikan* user — kecepatan tiap tombol, jeda
 antar tombol, durasi penekanan. Pola ini sulit ditiru meskipun password
 bocor.
 
 **Dua operasi inti:**
 
-| Operasi | Kapan dipakai | Endpoint SecAuth |
+| Operasi | Kapan dipakai | Endpoint identitype |
 |---|---|---|
 | **Enroll** | Saat user baru daftar — rekam pola ketikan password mereka beberapa kali untuk melatih model | `POST /api/partner/enroll` |
 | **Verify** | Saat user login — cocokkan ritme ketikan saat ini dengan model yang sudah terlatih | `POST /api/partner/verify` |
 
 User harus enroll **beberapa sampel** sebelum bisa verify. Jumlah pastinya
-dikonfigurasi di sisi SecAuth dan dikembalikan via field `required_templates`
+dikonfigurasi di sisi identitype dan dikembalikan via field `required_templates`
 (observasi lapangan: 5–10). **Jangan hard-code** — selalu baca dari response.
 
 ---
@@ -49,7 +49,7 @@ dikonfigurasi di sisi SecAuth dan dikembalikan via field `required_templates`
 ```
 ┌─────────────────┐    keystroke events     ┌─────────────────┐    Bearer token     ┌─────────────────┐
 │                 │ ──────────────────────► │                 │ ──────────────────► │                 │
-│   Browser User  │                          │  Server Mitra   │                     │   SecAuth API   │
+│   Browser User  │                          │  Server Mitra   │                     │   identitype API   │
 │                 │ ◄──────────────────────  │   (proxy)       │ ◄────────────────── │                 │
 └─────────────────┘   match / no-match       └─────────────────┘   verdict + score   └─────────────────┘
 ```
@@ -59,11 +59,11 @@ dikonfigurasi di sisi SecAuth dan dikembalikan via field `required_templates`
 1. **Browser** — merekam tiap `keydown` & `keyup` user di field password,
    menyusunnya jadi array event JSON.
 2. **Server Mitra** — menerima event dari browser, menambahkan API key,
-   meneruskan ke SecAuth. Disebut "proxy" karena hanya melewatkan.
-3. **SecAuth API** — melatih atau memverifikasi pola ketikan, mengembalikan
+   meneruskan ke identitype. Disebut "proxy" karena hanya melewatkan.
+3. **identitype API** — melatih atau memverifikasi pola ketikan, mengembalikan
    verdict.
 
-> **Kenapa harus ada proxy?** API key SecAuth tidak boleh muncul di
+> **Kenapa harus ada proxy?** API key identitype tidak boleh muncul di
 > JavaScript browser (siapa pun bisa membacanya via DevTools). Selalu
 > simpan di server.
 
@@ -71,13 +71,13 @@ dikonfigurasi di sisi SecAuth dan dikembalikan via field `required_templates`
 
 ## 3. Yang Anda Butuhkan
 
-- **API Key** SecAuth (format: `sk_live_...`) — didapat saat mendaftar
+- **API Key** identitype (format: `sk_live_...`) — didapat saat mendaftar
   sebagai mitra.
 - **Backend** apa saja yang bisa kirim HTTP request (Flask, Express,
   Laravel, Django, FastAPI, Spring, dll.). Tutorial ini pakai Flask.
 - **Frontend** yang punya akses ke `keydown`/`keyup` event browser
   (semua framework modern bisa).
-- **Database** untuk menyimpan akun user dan ID user mereka di SecAuth.
+- **Database** untuk menyimpan akun user dan ID user mereka di identitype.
 
 ---
 
@@ -87,9 +87,9 @@ Sebuah website mitra perlu **enam komponen**:
 
 | # | Komponen | Lokasi | Fungsi |
 |---|---|---|---|
-| 1 | Tabel user | DB | Simpan `email`, `password_hash`, dan `secauth_id` (UUID) |
-| 2 | Endpoint sign-up | Backend | Buat akun, generate `secauth_id` unik per user |
-| 3 | Endpoint login | Backend | Validasi password, kembalikan `secauth_id` |
+| 1 | Tabel user | DB | Simpan `email`, `password_hash`, dan `identitype_id` (UUID) |
+| 2 | Endpoint sign-up | Backend | Buat akun, generate `identitype_id` unik per user |
+| 3 | Endpoint login | Backend | Validasi password, kembalikan `identitype_id` |
 | 4 | Halaman enrollment | Frontend | Form input password, rekam keystroke, kirim ke proxy |
 | 5 | Halaman login | Frontend | Form login biasa + perekam keystroke |
 | 6 | Endpoint proxy | Backend | Teruskan event ke `/api/partner/enroll` atau `/verify` |
@@ -102,10 +102,10 @@ Sebuah website mitra perlu **enam komponen**:
 
 ```
 1. User isi form sign-up (email + password)
-2. Server: simpan user, generate UUID sebagai secauth_id
+2. Server: simpan user, generate UUID sebagai identitype_id
 3. Redirect ke halaman enrollment
 4. User mengetik password mereka — keystroke direkam
-5. Browser → Server (proxy) → SecAuth /enroll
+5. Browser → Server (proxy) → identitype /enroll
 6. Ulangi langkah 4–5 sampai `progress.complete === true` (server menentukan jumlah; observasi: 5–10x)
 ```
 
@@ -114,9 +114,9 @@ Sebuah website mitra perlu **enam komponen**:
 ```
 1. User isi form login (email + password)
 2. Server: validasi password
-3. Jika password benar → kembalikan secauth_id ke browser
-4. Browser kirim keystroke yang baru saja direkam → Server (proxy) → SecAuth /verify
-5. SecAuth respon: { verified: true, decision: "genuine", confidence_score: 0.92 }
+3. Jika password benar → kembalikan identitype_id ke browser
+4. Browser kirim keystroke yang baru saja direkam → Server (proxy) → identitype /verify
+5. identitype respon: { verified: true, decision: "genuine", confidence_score: 0.92 }
 6. Jika verified=true → masuk ke dashboard. Jika false → blokir / minta ulang
 ```
 
@@ -136,10 +136,10 @@ class User(db.Model, UserMixin):
     id = db.Column(db.Integer, primary_key=True)
     email = db.Column(db.String(150), unique=True)
     password = db.Column(db.String(150))                                  # hash
-    secauth_id = db.Column(db.String(100), default=lambda: str(uuid.uuid4()))
+    identitype_id = db.Column(db.String(100), default=lambda: str(uuid.uuid4()))
 ```
 
-> `secauth_id` adalah identifier yang Anda kirim ke SecAuth API sebagai
+> `identitype_id` adalah identifier yang Anda kirim ke identitype API sebagai
 > `username`. UUID acak lebih aman daripada email user (jangan kirim email
 > langsung ke pihak ketiga).
 
@@ -166,7 +166,7 @@ def api_sign_up():
 
     user = User(email=email, password=generate_password_hash(password))
     db.session.add(user); db.session.commit()
-    return jsonify({"message": "Created", "user_id": user.secauth_id}), 201
+    return jsonify({"message": "Created", "user_id": user.identitype_id}), 201
 
 
 @auth.route("/api/login", methods=["POST"])
@@ -175,22 +175,22 @@ def api_login():
     user = User.query.filter_by(email=data.get("email")).first()
     if not user or not check_password_hash(user.password, data.get("password")):
         return jsonify({"message": "Invalid email or password"}), 401
-    return jsonify({"message": "OK", "user_id": user.secauth_id}), 200
+    return jsonify({"message": "OK", "user_id": user.identitype_id}), 200
 ```
 
-### Step 3 — Klien SecAuth (helper di server)
+### Step 3 — Klien identitype (helper di server)
 
-Buat satu modul tipis yang membungkus panggilan ke SecAuth. Tujuannya:
+Buat satu modul tipis yang membungkus panggilan ke identitype. Tujuannya:
 API key, timeout, dan error-handling hanya ada di satu tempat.
 
 ```python
-# secauth_client.py
+# identitype_client.py
 import json
 import urllib.request, urllib.error
 
 import os
-BASE_URL = os.getenv("SECAUTH_BASE_URL")  # e.g. https://api.secauth.example.com/api/partner
-API_KEY  = os.getenv("SECAUTH_API_KEY")   # sk_live_... — JANGAN expose ke frontend
+BASE_URL = os.getenv("IDENTITYPE_BASE_URL")  # e.g. https://api.identitype.example.com/api/partner
+API_KEY  = os.getenv("IDENTITYPE_API_KEY")   # sk_live_... — JANGAN expose ke frontend
 
 def _post(endpoint, payload):
     req = urllib.request.Request(
@@ -211,11 +211,11 @@ def _post(endpoint, payload):
         body["http_status"] = e.code
         return body, e.code
 
-def enroll(secauth_id, events):
-    return _post("enroll", {"username": secauth_id, "events": events})
+def enroll(identitype_id, events):
+    return _post("enroll", {"username": identitype_id, "events": events})
 
-def verify(secauth_id, events):
-    return _post("verify", {"username": secauth_id, "events": events})
+def verify(identitype_id, events):
+    return _post("verify", {"username": identitype_id, "events": events})
 ```
 
 ### Step 4 — Endpoint Proxy
@@ -223,12 +223,12 @@ def verify(secauth_id, events):
 ```python
 # views.py
 from flask import Blueprint, request, jsonify
-from .secauth_client import enroll, verify
+from .identitype_client import enroll, verify
 
 views = Blueprint("views", __name__)
 
-@views.route("/secauth", methods=["POST"])
-def secauth_proxy():
+@views.route("/identitype", methods=["POST"])
+def identitype_proxy():
     data = request.get_json() or {}
     user_id = data.get("username")
     events  = data.get("events")
@@ -267,13 +267,13 @@ const events = recorder.getEvents();
 ### Step 6 — Frontend: Halaman Enrollment
 
 ```javascript
-async function submitEnrollment(secauthId, password) {
+async function submitEnrollment(identitypeId, password) {
   // 1. Pastikan password yang diketik sama dengan yang didaftarkan
   //    (lihat bagian "Pelajaran dari Simulasi" untuk alasannya)
   const v = await fetch("/api/verify-password", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ user_id: secauthId, password }),
+    body: JSON.stringify({ user_id: identitypeId, password }),
   }).then(r => r.json());
 
   if (!v.match) {
@@ -283,11 +283,11 @@ async function submitEnrollment(secauthId, password) {
 
   // 2. Kirim keystroke ke proxy mode enroll
   const events = recorder.getEvents();
-  const res = await fetch("/secauth", {
+  const res = await fetch("/identitype", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      username: secauthId,
+      username: identitypeId,
       events: events,
       mode: "enroll",
     }),
@@ -329,7 +329,7 @@ async function loginAndVerify(email, password) {
 
   // 2. Verifikasi pola ketikan
   const events = recorder.getEvents();
-  const res = await fetch("/secauth", {
+  const res = await fetch("/identitype", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -359,7 +359,7 @@ async function loginAndVerify(email, password) {
 @auth.route("/api/verify-password", methods=["POST"])
 def api_verify_password():
     data = request.get_json() or {}
-    user = User.query.filter_by(secauth_id=data.get("user_id")).first()
+    user = User.query.filter_by(identitype_id=data.get("user_id")).first()
     if not user or not check_password_hash(user.password, data.get("password", "")):
         return jsonify({"match": False, "message": "Password tidak cocok"}), 401
     return jsonify({"match": True}), 200
@@ -372,7 +372,7 @@ untuk alasan kenapa langkah ini penting.
 
 ## 7. Penanganan Error
 
-Field yang penting di setiap respons SecAuth:
+Field yang penting di setiap respons identitype:
 
 | Field | Arti |
 |---|---|
@@ -391,7 +391,7 @@ Field yang penting di setiap respons SecAuth:
 | `INSUFFICIENT_SAMPLES` | verify | User belum cukup enroll → arahkan kembali ke halaman enrollment |
 | `INSUFFICIENT_ENROLLMENT` | verify | Sama seperti di atas |
 | `INVALID_KEYSTROKE_DATA` | both | Data terlalu pendek / inkonsisten → minta user ulang dengan tip ("ketik natural, hindari backspace") |
-| `INVALID_USERNAME` | both | `username` tidak terdaftar di SecAuth — biasanya user belum pernah enroll |
+| `INVALID_USERNAME` | both | `username` tidak terdaftar di identitype — biasanya user belum pernah enroll |
 | `RATE_LIMIT_EXCEEDED` | both | Tunggu beberapa saat, jangan retry otomatis tanpa backoff |
 | `UNKNOWN` / `null` + status 4xx | verify | Model masih training — tampilkan info, suruh coba lagi |
 
@@ -437,7 +437,7 @@ ulang email-nya menyebalkan dan tidak menambah keamanan.
 
 ### 8.5 Default `required_templates` jangan di-hardcode
 
-SecAuth bisa mengubah minimum sampel (saat ini 5). Selalu baca nilai dari
+identitype bisa mengubah minimum sampel (saat ini 5). Selalu baca nilai dari
 respons API, gunakan fallback hanya jika field tidak ada:
 
 ```javascript
@@ -452,7 +452,7 @@ atas nama Anda dan menghabiskan kuota Anda.
 ### 8.7 Simpan progress enrollment di server, bukan sessionStorage
 
 `sessionStorage` hilang saat user tutup tab atau ganti device.
-Idealnya `templates_count` dibaca dari respons SecAuth setiap kali, bukan
+Idealnya `templates_count` dibaca dari respons identitype setiap kali, bukan
 dihitung sendiri di client.
 
 ---
@@ -466,23 +466,23 @@ Kenyataan yang harus Anda pahami sebelum deploy:
 Setiap event berisi field `key` (contoh: `"key": "U"`, `"key": "m"`).
 Disusun berurutan, mereka **literal mengeja password user**. Artinya
 siapa pun yang bisa membaca payload — proxy MITM, log server, Burp
-history, database SecAuth — bisa merekonstruksi password.
+history, database identitype — bisa merekonstruksi password.
 
-Ini sifat inheren dari sistem keystroke dynamics: SecAuth butuh tahu
+Ini sifat inheren dari sistem keystroke dynamics: identitype butuh tahu
 karakter mana yang ditekan untuk analisis pola. Jadi tugas mitigasi
 **bukan menyembunyikan datanya**, melainkan:
 
 | Aksi | Tujuan |
 |---|---|
-| **HTTPS wajib di semua lapisan** | Browser↔mitra dan mitra↔SecAuth. Tanpa TLS, password plain text di kabel. |
-| **Jangan log payload** | Log hanya metadata: mode, jumlah event, success/decision. Lihat [secauth.py](../website/secauth.py) — di simulasi `print(payload)` sudah dihapus. |
+| **HTTPS wajib di semua lapisan** | Browser↔mitra dan mitra↔identitype. Tanpa TLS, password plain text di kabel. |
+| **Jangan log payload** | Log hanya metadata: mode, jumlah event, success/decision. Lihat [identitype.py](../website/identitype.py) — di simulasi `print(payload)` sudah dihapus. |
 | **API key di env var** | Tidak boleh hard-coded di source code. |
 | **Username = UUID, bukan email** | Jangan kirim PII ke pihak ketiga sebagai identifier. |
 
 ### 9.2 Proxy server-to-server: kenapa Burp tidak melihatnya
 
 Saat browser ↔ Flask di-proxy lewat Burp, request itu **terlihat**.
-Tapi Flask ↔ SecAuth lewat `urllib` Python yang tidak ikut proxy
+Tapi Flask ↔ identitype lewat `urllib` Python yang tidak ikut proxy
 browser — itulah kenapa request kedua tidak muncul di Burp history.
 
 Untuk debugging dengan Burp:
@@ -501,9 +501,9 @@ Simulasi ini sekarang membaca semua secret dari env (lihat
 [.env.example](../.env.example)):
 
 ```bash
-SECAUTH_BASE_URL=https://api.secauth.example.com/api/partner
-SECAUTH_API_KEY=<your-secauth-api-key>
-SECAUTH_TIMEOUT_SECONDS=30
+IDENTITYPE_BASE_URL=https://api.identitype.example.com/api/partner
+IDENTITYPE_API_KEY=<your-identitype-api-key>
+IDENTITYPE_TIMEOUT_SECONDS=30
 FLASK_SECRET_KEY=<random 32+ chars>
 FLASK_DEBUG=0
 ```
@@ -511,10 +511,10 @@ FLASK_DEBUG=0
 Cara load di Python tanpa dependency tambahan:
 
 ```python
-# secauth.py
+# identitype.py
 import os
-API_KEY  = os.getenv("SECAUTH_API_KEY",  "")
-BASE_URL = os.getenv("SECAUTH_BASE_URL", "")
+API_KEY  = os.getenv("IDENTITYPE_API_KEY",  "")
+BASE_URL = os.getenv("IDENTITYPE_BASE_URL", "")
 ```
 
 Untuk dev convenience pakai `python-dotenv`:
@@ -537,14 +537,14 @@ Aturan: detail teknis di log, pesan generic di response.
 | Network unreachable | `"Service temporarily unavailable"` | `WinError 10060`, hostname, errno |
 | Timeout | `"Service did not respond in time"` | `socket.timeout`, durasi |
 | 5xx upstream | `"Service returned an error"` | Status code, response body |
-| 4xx upstream dengan `error_code` | Pesan dari SecAuth (sudah aman) | Sama + http_status |
+| 4xx upstream dengan `error_code` | Pesan dari identitype (sudah aman) | Sama + http_status |
 
-Implementasinya di [secauth.py](../website/secauth.py) — `urllib.error.URLError`,
+Implementasinya di [identitype.py](../website/identitype.py) — `urllib.error.URLError`,
 `socket.timeout`, dan `HTTPError 5xx` semua disanitasi.
 
 ### 9.5 Validasi Input di Proxy
 
-Endpoint `/secauth` mitra **tidak boleh** percaya begitu saja apa yang
+Endpoint `/identitype` mitra **tidak boleh** percaya begitu saja apa yang
 dikirim browser. Validasi sebelum forward:
 
 - `username` non-empty dan berasal dari user yang sedang login
@@ -559,20 +559,21 @@ enrollment/verify orang lain.
 ### 9.6 Session Binding (Belum ada di Simulasi — Wajib di Prod)
 
 Saat ini frontend simulasi menyimpan `user_id` di `sessionStorage` dan
-mengirimnya ke `/secauth`. Server menerimanya apa adanya. **Ini tidak
+mengirimnya ke `/identitype`. Server menerimanya apa adanya. **Ini tidak
 aman.** Di produksi:
 
 1. Setelah login berhasil → server set Flask session (`session["user_id"] = ...`)
-2. Endpoint `/secauth` baca `user_id` dari session, **abaikan body request**
+2. Endpoint `/identitype` baca `user_id` dari session, **abaikan body request**
 3. Sehingga client tidak bisa mengubah username untuk membajak enrollment
    orang lain
 
-### 9.7 Yang Bergantung pada Sisi SecAuth (Bukan Mitra)
+### 9.7 Yang Bergantung pada Sisi identitype (Bukan Mitra)
 
 Beberapa kontrol keamanan tidak bisa Anda lakukan dari mitra — harus
-diterapkan oleh tim SecAuth. Lihat
-[SECAUTH_PROVIDER_SECURITY_REQUIREMENTS.md](./SECAUTH_PROVIDER_SECURITY_REQUIREMENTS.md)
-untuk daftar lengkap yang harus disampaikan ke mereka.
+diterapkan oleh tim identitype: TLS endpoint, encryption at rest untuk
+template biometrik, rate limiting per-username, rotasi API key, dan
+sanitasi error response. Koordinasi dengan tim penyedia API untuk
+memastikan kontrol-kontrol ini ada sebelum go-live.
 
 ---
 
@@ -580,11 +581,11 @@ untuk daftar lengkap yang harus disampaikan ke mereka.
 
 ### Keamanan
 - [ ] **HTTPS** untuk browser ↔ Anda (TLS dari reverse proxy)
-- [ ] **HTTPS** untuk Anda ↔ SecAuth (`SECAUTH_BASE_URL=https://…`)
+- [ ] **HTTPS** untuk Anda ↔ identitype (`IDENTITYPE_BASE_URL=https://…`)
 - [ ] API key di environment variable, bukan source code
 - [ ] `FLASK_SECRET_KEY` di env, 32+ karakter acak
 - [ ] `FLASK_DEBUG=0` di produksi (interactive debugger = RCE bagi attacker)
-- [ ] Endpoint `/secauth` proxy hanya bisa dipanggil oleh user yang
+- [ ] Endpoint `/identitype` proxy hanya bisa dipanggil oleh user yang
       sudah login; `username` diambil dari **session**, bukan body request
 - [ ] Validasi `events` di server: array, non-empty, max length wajar
 - [ ] Rate limit di endpoint proxy mitra (mis. 5 req/menit per user)
@@ -592,13 +593,13 @@ untuk daftar lengkap yang harus disampaikan ke mereka.
       (di simulasi ini sudah, lihat [auth.py](../website/auth.py))
 - [ ] CORS dikonfigurasi ketat di domain Anda
 - [ ] **Logging hanya metadata** — tidak pernah `print(events)` atau
-      `print(payload)`. Lihat [secauth.py](../website/secauth.py) dan
+      `print(payload)`. Lihat [identitype.py](../website/identitype.py) dan
       [views.py](../website/views.py)
 - [ ] `.env` ada di `.gitignore`; pastikan tidak masuk git history
 
 ### Reliability
-- [ ] Timeout pada panggilan ke SecAuth (kami pakai 30 detik)
-- [ ] Tangani `503`/`502` dari SecAuth dengan graceful fallback
+- [ ] Timeout pada panggilan ke identitype (kami pakai 30 detik)
+- [ ] Tangani `503`/`502` dari identitype dengan graceful fallback
 - [ ] Logging request/response (jangan log password!)
 
 ### UX
@@ -611,27 +612,82 @@ untuk daftar lengkap yang harus disampaikan ke mereka.
 
 ### Compliance
 - [ ] Beri tahu user di privacy notice bahwa data ritme ketikan dikirim
-      ke pihak ketiga (SecAuth)
-- [ ] Jangan kirim PII (email, nama) sebagai `username` SecAuth — pakai
+      ke pihak ketiga (identitype)
+- [ ] Jangan kirim PII (email, nama) sebagai `username` identitype — pakai
       UUID acak
 
 ---
 
 ## Referensi File di Simulasi
 
-Implementasi nyata dari setiap bagian di atas:
+Daftar semua file yang ada di repository ini beserta peran masing-masing.
+Gunakan ini sebagai peta saat membaca code.
 
-| Komponen | File |
+### Akar Project
+
+| File | Peran |
 |---|---|
-| Model user dengan `secauth_id` | [website/models.py](../website/models.py) |
-| Sign-up, login, verify-password endpoint | [website/auth.py](../website/auth.py) |
-| Endpoint proxy `/secauth` | [website/views.py](../website/views.py) |
-| Klien HTTP ke SecAuth | [website/secauth.py](../website/secauth.py) |
-| Perekam keystroke (drop-in JS) | [website/static/recorder.js](../website/static/recorder.js) |
-| Logika frontend (enroll + verify) | [website/static/index.js](../website/static/index.js) |
-| Form login | [website/templates/login.html](../website/templates/login.html) |
-| Form enrollment | [website/templates/typing_patterns.html](../website/templates/typing_patterns.html) |
-| Toast (pengganti `alert`) | [website/static/toast.js](../website/static/toast.js), [toast.css](../website/static/toast.css) |
+| [`main.py`](../main.py) | Entry point. Load `.env`, buat Flask app, jalankan server. |
+| [`requirements.txt`](../requirements.txt) | Dependency Python: Flask, Flask-SQLAlchemy, Flask-Login, python-dotenv. |
+| [`.env.example`](../.env.example) | Template environment variable. Copy ke `.env` lalu isi nilai asli. |
+| `.env` | **Tidak di-commit.** Isi: `IDENTITYPE_BASE_URL`, `IDENTITYPE_API_KEY`, `FLASK_SECRET_KEY`. |
+| [`.gitignore`](../.gitignore) | Daftar file yang TIDAK boleh masuk git: `.env`, `instance/`, `.venv`, dll. |
+| [`README.md`](../README.md) | Ringkasan project + cara setup singkat. |
 
-API reference lengkap (request/response per endpoint): lihat
-[API_DOCUMENTATION.md](./API_DOCUMENTATION.md).
+### Backend Flask — `website/`
+
+| File | Peran |
+|---|---|
+| [`__init__.py`](../website/__init__.py) | App factory. Load `FLASK_SECRET_KEY` dari env, register blueprint, init database. |
+| [`models.py`](../website/models.py) | Model `User` (SQLAlchemy): kolom `email`, `password` (hash), dan UUID identifier yang dikirim ke identitype sebagai `username`. |
+| [`auth.py`](../website/auth.py) | Endpoint JSON: `/api/sign-up`, `/api/login`, `/api/verify-password`. Pakai `werkzeug.security` untuk hash + compare password. |
+| [`views.py`](../website/views.py) | Endpoint halaman (home, dashboard, enrollment) + **endpoint proxy `/identitype`** yang menerima keystroke dari browser dan meneruskan ke API identitype. |
+| [`identitype.py`](../website/identitype.py) | **Klien HTTP ke API identitype.** Baca `IDENTITYPE_*` env, kirim Bearer token, sanitize error message sebelum dikirim balik ke browser. Tidak pernah log payload. |
+
+### Frontend Static — `website/static/`
+
+| File | Peran |
+|---|---|
+| [`recorder.js`](../website/static/recorder.js) | **Library perekam keystroke.** Class `Keystroke` yang attach ke input field, rekam keydown/keyup, kembalikan array event. Drop-in module — bisa dipakai standalone. |
+| [`index.js`](../website/static/index.js) | Glue frontend: bind form submit, panggil `/api/login` lalu `/identitype`, handle error code, redirect ke dashboard saat verify sukses. |
+| [`toast.js`](../website/static/toast.js) | Komponen notifikasi minim (pengganti `alert()`). Expose `window.toast.success/error/warning/info`. |
+| [`toast.css`](../website/static/toast.css) | Styling untuk toast — slide-in dari top-right, auto-dismiss. |
+| [`style.css`](../website/static/style.css) | Stylesheet utama. Font Fraunces + Inter, palette minimalis. |
+
+### Frontend Templates — `website/templates/`
+
+| File | Peran |
+|---|---|
+| [`base.html`](../website/templates/base.html) | Layout induk: nav, toast container, link CSS/JS. Semua page extends ini. |
+| [`home.html`](../website/templates/home.html) | Landing page dengan dua CTA (sign-up / login). |
+| [`sign_up.html`](../website/templates/sign_up.html) | Form pendaftaran. Submit → `/api/sign-up` → redirect ke enrollment. |
+| [`typing_patterns.html`](../website/templates/typing_patterns.html) | Form enrollment. User mengetik password berulang-kali; tiap submit kirim keystroke ke `/identitype` mode `enroll`. |
+| [`login.html`](../website/templates/login.html) | Form login. Submit → `/api/login` → `/identitype` mode `verify` → dashboard. |
+| [`dashboard.html`](../website/templates/dashboard.html) | Halaman setelah login sukses: `Hello, <email>` + tombol sign out. |
+
+### Database
+
+| Path | Peran |
+|---|---|
+| `instance/database.db` | **Tidak di-commit.** SQLite database lokal yang dibuat otomatis saat `python main.py` pertama kali. Berisi akun user (email + hash password + UUID identifier identitype). |
+
+### Dokumentasi — `docs/`
+
+| File | Peran |
+|---|---|
+| [`API_DOCUMENTATION.md`](./API_DOCUMENTATION.md) | Reference lengkap REST API identitype: request/response per endpoint, error codes, contoh cURL. |
+| [`PARTNER_INTEGRATION_GUIDE.md`](./PARTNER_INTEGRATION_GUIDE.md) | **Dokumen ini.** Panduan implementasi step-by-step + best practice. |
+| [`identitype_Postman_Collection.json`](./identitype_Postman_Collection.json) | Postman collection siap import untuk testing endpoint `enroll` & `verify`. |
+
+### Yang Wajib Mitra Punya (Minimum)
+
+Kalau Anda implementasi ulang di stack lain, **minimal** enam komponen ini:
+
+1. **Sebuah klien HTTP** ke identitype (analog [`identitype.py`](../website/identitype.py)) — baca API key dari env, kirim Bearer token, sanitize error.
+2. **Endpoint proxy** di backend Anda (analog [`views.py /identitype`](../website/views.py)) — validasi input, panggil klien #1, return response ke browser.
+3. **Perekam keystroke** di frontend (analog [`recorder.js`](../website/static/recorder.js)) — bisa pakai file ini langsung sebagai drop-in.
+4. **Form enrollment** yang merekam password user beberapa kali (analog [`typing_patterns.html`](../website/templates/typing_patterns.html)).
+5. **Form login** yang merekam keystroke + kirim ke proxy mode `verify` (analog [`login.html`](../website/templates/login.html) + bagian relevan di [`index.js`](../website/static/index.js)).
+6. **Tabel user** dengan kolom UUID untuk identifier yang dikirim ke identitype sebagai `username` (analog [`models.py`](../website/models.py)).
+
+Setiap komponen ini bisa Anda copy-adapt dari simulasi.

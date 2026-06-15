@@ -2,7 +2,7 @@
  * Keystroke Dynamics Recorder
  *
  * Merekam event keydown/keyup untuk keperluan autentikasi biometrik.
- * Digunakan bersama endpoint SecAuth Partner API:
+ * Digunakan bersama endpoint identitype Partner API:
  *   POST /api/partner/enroll
  *   POST /api/partner/verify
  */
@@ -242,7 +242,7 @@ export class Keystroke {
     // ── Payload Builder ────────────────────────────────────────────────────────
 
     /**
-     * Buat objek payload siap kirim ke endpoint SecAuth.
+     * Buat objek payload siap kirim ke endpoint identitype.
      * @param {Object} params
      * @param {string} params.username  Username / UUID pengguna (wajib).
      * @returns {{ username: string, events: Array }}

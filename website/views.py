@@ -1,7 +1,7 @@
 from flask import Blueprint, render_template, request, jsonify, make_response
 import logging
 
-from .secauth import send_typing_data
+from .identitype import send_typing_data
 
 views = Blueprint('views', __name__)
 log = logging.getLogger(__name__)
@@ -22,8 +22,8 @@ def dashboard():
     return render_template("dashboard.html")
 
 
-@views.route('/secauth', methods=['POST'])
-def secauth():
+@views.route('/identitype', methods=['POST'])
+def identitype():
     data = request.get_json(silent=True) or {}
 
     username = str(data.get('username', '')).strip()
@@ -33,7 +33,7 @@ def secauth():
     # NOTE: keystroke events contain the literal characters typed by the user
     # (e.g. password). NEVER log `data` or `events` in plaintext.
     log.info(
-        "secauth request: mode=%s username=%s events_count=%s",
+        "identitype request: mode=%s username=%s events_count=%s",
         mode,
         username[:8] + "…" if username else "<empty>",
         len(events) if isinstance(events, list) else "N/A",
@@ -61,7 +61,7 @@ def secauth():
         status = 200 if upstream.get("success") else 400
 
     log.info(
-        "secauth response: mode=%s status=%s success=%s decision=%s",
+        "identitype response: mode=%s status=%s success=%s decision=%s",
         mode,
         status,
         upstream.get("success"),

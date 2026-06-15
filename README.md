@@ -2,12 +2,12 @@
 
 A simple Flask web application that demonstrates two-factor authentication using
 keystroke dynamics. The app records typing patterns from the user and verifies
-them against a backend SecAuth Partner API.
+them against a backend identitype Partner API.
 
 ## Stack
 - Flask + SQLAlchemy (SQLite)
 - Vanilla JavaScript keystroke recorder
-- SecAuth Partner API for enroll/verify
+- identitype Partner API for enroll/verify
 
 ## Run
 

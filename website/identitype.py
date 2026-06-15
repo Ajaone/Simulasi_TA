@@ -1,5 +1,5 @@
 """
-SecAuth Partner API client.
+identitype Partner API client.
 
 PRODUCTION REQUIREMENTS:
 - BASE_URL MUST be HTTPS in production. HTTP exposes the API key and the
@@ -20,19 +20,19 @@ import urllib.request
 log = logging.getLogger(__name__)
 
 # Config — read from env, fall back to local-dev defaults.
-BASE_URL = os.getenv("SECAUTH_BASE_URL", "http://localhost:5000/api/partner")
-API_KEY  = os.getenv("SECAUTH_API_KEY", "")
-TIMEOUT  = int(os.getenv("SECAUTH_TIMEOUT_SECONDS", "30"))
+BASE_URL = os.getenv("IDENTITYPE_BASE_URL", "http://localhost:5000/api/partner")
+API_KEY  = os.getenv("IDENTITYPE_API_KEY", "")
+TIMEOUT  = int(os.getenv("IDENTITYPE_TIMEOUT_SECONDS", "30"))
 
 if BASE_URL.startswith("http://") and not BASE_URL.startswith("http://127.") \
         and not BASE_URL.startswith("http://localhost"):
     log.warning(
-        "SECAUTH_BASE_URL uses plain HTTP. Use HTTPS in production — keystroke "
+        "IDENTITYPE_BASE_URL uses plain HTTP. Use HTTPS in production — keystroke "
         "events and the API key are sent over the wire."
     )
 
 if not API_KEY:
-    log.warning("SECAUTH_API_KEY is not set. Requests to SecAuth will fail.")
+    log.warning("IDENTITYPE_API_KEY is not set. Requests to identitype will fail.")
 
 # Generic messages — never leak infrastructure detail to the client.
 _MSG_UNAVAILABLE = "Authentication service is temporarily unavailable. Please try again in a moment."
@@ -61,7 +61,7 @@ def post_partner(endpoint: str, payload: dict, origin: str | None = None):
 
     # Log only metadata — never log `payload` (contains keystroke characters).
     log.info(
-        "→ SecAuth %s endpoint=%s events_count=%s key=%s",
+        "→ identitype %s endpoint=%s events_count=%s key=%s",
         "POST",
         endpoint,
         len(payload.get("events", [])) if isinstance(payload.get("events"), list) else "N/A",
@@ -74,14 +74,14 @@ def post_partner(endpoint: str, payload: dict, origin: str | None = None):
             try:
                 parsed = json.loads(body)
             except json.JSONDecodeError:
-                log.error("SecAuth returned non-JSON response (status=%s)", res.status)
+                log.error("identitype returned non-JSON response (status=%s)", res.status)
                 return {
                     "success":    False,
                     "error_code": "UPSTREAM_ERROR",
                     "message":    _MSG_UPSTREAM,
                 }
             log.info(
-                "← SecAuth ok status=%s success=%s decision=%s verified=%s",
+                "← identitype ok status=%s success=%s decision=%s verified=%s",
                 res.status,
                 parsed.get("success"),
                 parsed.get("decision"),
@@ -95,7 +95,7 @@ def post_partner(endpoint: str, payload: dict, origin: str | None = None):
         except Exception:
             error_body = ""
 
-        log.warning("SecAuth HTTP error status=%s", e.code)
+        log.warning("identitype HTTP error status=%s", e.code)
 
         try:
             error_json = json.loads(error_body)
@@ -115,7 +115,7 @@ def post_partner(endpoint: str, payload: dict, origin: str | None = None):
             }
 
     except (socket.timeout, TimeoutError):
-        log.warning("SecAuth timeout after %ss", TIMEOUT)
+        log.warning("identitype timeout after %ss", TIMEOUT)
         return {
             "success":    False,
             "error_code": "SERVICE_TIMEOUT",
@@ -124,7 +124,7 @@ def post_partner(endpoint: str, payload: dict, origin: str | None = None):
 
     except urllib.error.URLError as e:
         # str(e) leaks hostname / WinError / errno — log it server-side only.
-        log.warning("SecAuth network error: %s", type(e).__name__)
+        log.warning("identitype network error: %s", type(e).__name__)
         return {
             "success":    False,
             "error_code": "SERVICE_UNAVAILABLE",
@@ -132,7 +132,7 @@ def post_partner(endpoint: str, payload: dict, origin: str | None = None):
         }
 
     except Exception as e:
-        log.exception("Unexpected error calling SecAuth: %s", type(e).__name__)
+        log.exception("Unexpected error calling identitype: %s", type(e).__name__)
         return {
             "success":    False,
             "error_code": "SERVER_ERROR",

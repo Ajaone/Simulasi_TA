@@ -1,6 +1,6 @@
 import { Keystroke } from "./recorder.js";
 
-const secauth = new Keystroke();
+const identitype = new Keystroke();
 
 let currentUserId = null;
 let currentUserEmail = null;
@@ -18,7 +18,7 @@ function notify(message, type = "info", duration = 4500) {
 const loginForm = document.getElementById("login-form");
 if (loginForm) {
   // Only capture password keystrokes — must match what enrollment recorded.
-  secauth.addTarget("password");
+  identitype.addTarget("password");
   loginForm.addEventListener("submit", (event) => {
     event.preventDefault();
     loginOrSignUp(true);
@@ -27,7 +27,7 @@ if (loginForm) {
 
 const typingPatternsForm = document.getElementById("typing-patterns-form");
 if (typingPatternsForm) {
-  secauth.addTarget("password");
+  identitype.addTarget("password");
   typingPatternsForm.addEventListener("submit", (event) => {
     event.preventDefault();
     enrollTypingPattern();
@@ -55,7 +55,7 @@ function clearAuthFields() {
     emailInput.focus();
   }
 
-  secauth.reset();
+  identitype.reset();
 }
 
 export function loginOrSignUp(login = true) {
@@ -158,7 +158,7 @@ function enrollTypingPattern() {
           passwordInput.value = "";
           passwordInput.focus();
         }
-        secauth.reset();
+        identitype.reset();
       }
     })
     .catch((error) => {
@@ -168,7 +168,7 @@ function enrollTypingPattern() {
 }
 
 function sendTypingData(id, mode = "verify") {
-  const events = secauth.getEvents();
+  const events = identitype.getEvents();
 
   console.log("=== Keystroke Events Recorded ===");
   console.log("Event count:", events.length);
@@ -192,9 +192,9 @@ function sendTypingData(id, mode = "verify") {
     mode: mode
   };
 
-  console.log("Sending to secauth with " + events.length + " events");
+  console.log("Sending to identitype with " + events.length + " events");
 
-  fetch("/secauth", {
+  fetch("/identitype", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
@@ -204,7 +204,7 @@ function sendTypingData(id, mode = "verify") {
       return response.json();
     })
     .then((data) => {
-      console.log("=== FULL RESPONSE FROM SECAUTH ===");
+      console.log("=== FULL RESPONSE FROM IDENTITYPE ===");
       console.log(JSON.stringify(data, null, 2));
       console.log("===================================");
 
@@ -344,5 +344,5 @@ function sendTypingData(id, mode = "verify") {
         clearAuthFields();
       }
     });
-  secauth.reset();
+  identitype.reset();
 }

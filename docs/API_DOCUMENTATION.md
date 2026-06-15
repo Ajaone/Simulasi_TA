@@ -1,7 +1,7 @@
-# SecAuth Keystroke Dynamics — API Documentation
+# identitype Keystroke Dynamics — API Documentation
 
-> **Base URL (SecAuth Server):** `<SECAUTH_BASE_URL>` — set per-environment (e.g. via `SECAUTH_BASE_URL` env var). HTTPS in production.
-> **API Key:** `<YOUR_API_KEY>` — set via `SECAUTH_API_KEY` env var; never commit to source.
+> **Base URL (identitype Server):** `<IDENTITYPE_BASE_URL>` — set per-environment (e.g. via `IDENTITYPE_BASE_URL` env var). HTTPS in production.
+> **API Key:** `<YOUR_API_KEY>` — set via `IDENTITYPE_API_KEY` env var; never commit to source.
 > **Simulation Website Base URL:** `http://localhost:5000` *(adjust to your local port)*
 
 ---
@@ -20,7 +20,7 @@
    - [Architecture Overview](#architecture-overview)
    - [Step 1: Record Keystroke Events](#step-1-record-keystroke-events-front-end)
    - [Step 2: Send to Simulation Proxy](#step-2-send-to-simulation-proxy-endpoint)
-   - [Step 3: Proxy Calls SecAuth Partner API](#step-3-proxy-calls-secauth-partner-api)
+   - [Step 3: Proxy Calls identitype Partner API](#step-3-proxy-calls-identitype-partner-api)
    - [Complete Flow Diagram](#complete-flow-diagram)
 8. [JavaScript SDK — recorder.js](#javascript-sdk--recorderjs)
 
@@ -28,7 +28,7 @@
 
 ## Overview
 
-SecAuth provides a **biometric keystroke-dynamics authentication** service.  
+identitype provides a **biometric keystroke-dynamics authentication** service.  
 Partners integrate the service through two REST endpoints:
 
 | Endpoint | Purpose |
@@ -42,7 +42,7 @@ A user must enroll **at least once (typically 3 times)** before they can verify.
 
 ## Authentication
 
-Every request to the SecAuth partner API requires a **Bearer Token** in the `Authorization` header.
+Every request to the identitype partner API requires a **Bearer Token** in the `Authorization` header.
 
 ```
 Authorization: Bearer <YOUR_API_KEY>
@@ -53,7 +53,7 @@ Authorization: Bearer <YOUR_API_KEY>
 | `Authorization` | `Bearer <API_KEY>` |
 | `Content-Type` | `application/json` |
 
-> **Security note:** Never expose your API key in front-end JavaScript. Always route through your server-side proxy (as done in this simulation website via `/secauth`).
+> **Security note:** Never expose your API key in front-end JavaScript. Always route through your server-side proxy (as done in this simulation website via `/identitype`).
 
 ---
 
@@ -103,7 +103,7 @@ Enrolls (saves) a user's typing pattern. Multiple enrollment samples are recomme
 #### Request
 
 ```
-POST <SECAUTH_BASE_URL>/enroll
+POST <IDENTITYPE_BASE_URL>/enroll
 Content-Type: application/json
 Authorization: Bearer <YOUR_API_KEY>
 ```
@@ -172,7 +172,7 @@ The user must have completed enrollment before calling this endpoint.
 #### Request
 
 ```
-POST <SECAUTH_BASE_URL>/verify
+POST <IDENTITYPE_BASE_URL>/verify
 Content-Type: application/json
 Authorization: Bearer <YOUR_API_KEY>
 ```
@@ -260,20 +260,20 @@ Authorization: Bearer <YOUR_API_KEY>
 | `INVALID_USERNAME` | 400 | Username format is invalid |
 | `USER_NOT_FOUND` | 404 | No enrollment record found for the username |
 | `RATE_LIMIT_EXCEEDED` | 429 | Too many requests from this API key |
-| `SERVER_ERROR` | 500 | Internal SecAuth server error |
+| `SERVER_ERROR` | 500 | Internal identitype server error |
 | `API_ERROR` | 4xx | Generic partner API error |
 
 ---
 
 ## Postman Collection
 
-Import the file `docs/SecAuth_Postman_Collection.json` into Postman.
+Import the file `docs/identitype_Postman_Collection.json` into Postman.
 
 ### Quick Setup in Postman
 
-1. Open Postman → **Import** → select `SecAuth_Postman_Collection.json`
-2. Go to **Collections → SecAuth Partner API → Variables**
-3. Set `base_url` to `<SECAUTH_BASE_URL>`
+1. Open Postman → **Import** → select `identitype_Postman_Collection.json`
+2. Go to **Collections → identitype Partner API → Variables**
+3. Set `base_url` to `<IDENTITYPE_BASE_URL>`
 4. Set `api_key` to your Bearer token
 5. Set `username` to any UUID you want to test with
 
@@ -281,7 +281,7 @@ Import the file `docs/SecAuth_Postman_Collection.json` into Postman.
 
 **Enroll:**
 ```bash
-curl -X POST <SECAUTH_BASE_URL>/enroll \
+curl -X POST <IDENTITYPE_BASE_URL>/enroll \
   -H "Authorization: Bearer <YOUR_API_KEY>" \
   -H "Content-Type: application/json" \
   -d '{
@@ -301,7 +301,7 @@ curl -X POST <SECAUTH_BASE_URL>/enroll \
 
 **Verify:**
 ```bash
-curl -X POST <SECAUTH_BASE_URL>/verify \
+curl -X POST <IDENTITYPE_BASE_URL>/verify \
   -H "Authorization: Bearer <YOUR_API_KEY>" \
   -H "Content-Type: application/json" \
   -d '{
@@ -325,21 +325,21 @@ curl -X POST <SECAUTH_BASE_URL>/verify \
 
 ### Architecture Overview
 
-The simulation website acts as a **proxy** between the browser and the SecAuth server. The API key is **never exposed to the browser**.
+The simulation website acts as a **proxy** between the browser and the identitype server. The API key is **never exposed to the browser**.
 
 ```
 Browser (recorder.js)
        │
-       │  POST /secauth  (internal, no API key)
+       │  POST /identitype  (internal, no API key)
        ▼
 Simulation Website (Flask)
-  website/views.py → /secauth route
-  website/secauth.py → post_partner()
+  website/views.py → /identitype route
+  website/identitype.py → post_partner()
        │
        │  POST /api/partner/enroll  or  /api/partner/verify
        │  Authorization: Bearer <API_KEY>
        ▼
-SecAuth Server (<SECAUTH_BASE_URL>)
+identitype Server (<IDENTITYPE_BASE_URL>)
 ```
 
 ---
@@ -385,7 +385,7 @@ document.getElementById("submit-btn").addEventListener("click", () => {
 
 ### Step 2: Send to Simulation Proxy Endpoint
 
-From the browser, send the events to your own server's `/secauth` route, **not** directly to SecAuth.
+From the browser, send the events to your own server's `/identitype` route, **not** directly to identitype.
 
 ```javascript
 async function submitWithKeystroke(events) {
@@ -395,7 +395,7 @@ async function submitWithKeystroke(events) {
     mode: "enroll"  // or "verify"
   };
 
-  const response = await fetch("/secauth", {
+  const response = await fetch("/identitype", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload)
@@ -415,7 +415,7 @@ async function submitWithKeystroke(events) {
 }
 ```
 
-**Proxy request payload (`/secauth`):**
+**Proxy request payload (`/identitype`):**
 
 ```json
 {
@@ -452,16 +452,16 @@ or
 
 ---
 
-### Step 3: Proxy Calls SecAuth Partner API
+### Step 3: Proxy Calls identitype Partner API
 
-The Flask proxy in `website/secauth.py` handles forwarding:
+The Flask proxy in `website/identitype.py` handles forwarding:
 
 ```python
-# website/secauth.py — read secrets from environment, never hard-code.
+# website/identitype.py — read secrets from environment, never hard-code.
 import os
 
-BASE_URL = os.getenv("SECAUTH_BASE_URL")  # e.g. https://api.secauth.example.com/api/partner
-API_KEY  = os.getenv("SECAUTH_API_KEY")   # sk_live_...
+BASE_URL = os.getenv("IDENTITYPE_BASE_URL")  # e.g. https://api.identitype.example.com/api/partner
+API_KEY  = os.getenv("IDENTITYPE_API_KEY")   # sk_live_...
 
 def send_typing_data(username, events, mode="verify"):
     payload = {"username": username, "events": events}
@@ -470,11 +470,11 @@ def send_typing_data(username, events, mode="verify"):
     return {mode: result}
 ```
 
-The `/secauth` route in `website/views.py` validates input and calls `send_typing_data`:
+The `/identitype` route in `website/views.py` validates input and calls `send_typing_data`:
 
 ```python
-@views.route('/secauth', methods=['POST'])
-def secauth():
+@views.route('/identitype', methods=['POST'])
+def identitype():
     data = request.get_json()
     username = data.get('username')
     events   = data.get('events')
@@ -498,10 +498,10 @@ def secauth():
 User (typing-patterns page)
   1. Types password → recorder.js captures events
   2. Clicks "Enroll" button
-  3. Front-end calls POST /secauth  {username, events, mode:"enroll"}
-  4. Flask /secauth validates input
+  3. Front-end calls POST /identitype  {username, events, mode:"enroll"}
+  4. Flask /identitype validates input
   5. Flask calls POST /api/partner/enroll  {username, events}
-  6. SecAuth returns {success, templates_count, required_templates}
+  6. identitype returns {success, templates_count, required_templates}
   7. If templates_count < required_templates → show progress, repeat from step 1
   8. If templates_count >= required_templates → redirect to /login
 ```
@@ -514,10 +514,10 @@ User (login page)
   2. Clicks "Login" button
   3. Front-end calls POST /api/login  {email, password}
   4. Flask returns {user_id} on credential match
-  5. Front-end calls POST /secauth  {username: user_id, events, mode:"verify"}
-  6. Flask /secauth validates input
+  5. Front-end calls POST /identitype  {username: user_id, events, mode:"verify"}
+  6. Flask /identitype validates input
   7. Flask calls POST /api/partner/verify  {username, events}
-  8. SecAuth returns {success, verified, decision, confidence_score}
+  8. identitype returns {success, verified, decision, confidence_score}
   9. If verified && decision=="genuine" → redirect to home
  10. If not verified → show failure message
 ```
@@ -559,7 +559,7 @@ const ks = new Keystroke(options);
 | `getElapsedSeconds()` | `number` | Seconds elapsed since recording started |
 | `getTextId(text)` | `number` | Hash dari teks untuk identifikasi pola |
 | `checkEnvironment()` | `object` | Returns `{ browserType }` |
-| `buildPayload(params)` | `object` | Build payload siap kirim ke SecAuth API |
+| `buildPayload(params)` | `object` | Build payload siap kirim ke identitype API |
 | `removeEventListeners()` | `void` | Remove all keyboard event listeners |
 
 ### `getEvents()` Options
@@ -595,7 +595,7 @@ const events = ks.getEvents({
       const events = ks.getEvents();
       ks.reset();
 
-      const res = await fetch("/secauth", {
+      const res = await fetch("/identitype", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

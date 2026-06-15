@@ -1,14 +1,14 @@
 {
   "info": {
-    "_postman_id": "secauth-partner-api-v1",
-    "name": "SecAuth Partner API",
-    "description": "Postman collection untuk API Partner SecAuth Keystroke Dynamics.\n\nEndpoints:\n- POST /api/partner/enroll  — Daftarkan pola ketikan pengguna\n- POST /api/partner/verify  — Autentikasi pengguna berdasarkan pola ketikan\n\nVariabel Collection:\n- base_url : <SECAUTH_BASE_URL>\n- api_key  : Bearer token dari SecAuth\n- username : UUID pengguna yang akan di-enroll/verify",
+    "_postman_id": "identitype-partner-api-v1",
+    "name": "identitype Partner API",
+    "description": "Postman collection untuk API Partner identitype Keystroke Dynamics.\n\nEndpoints:\n- POST /api/partner/enroll  — Daftarkan pola ketikan pengguna\n- POST /api/partner/verify  — Autentikasi pengguna berdasarkan pola ketikan\n\nVariabel Collection:\n- base_url : <IDENTITYPE_BASE_URL>\n- api_key  : Bearer token dari identitype\n- username : UUID pengguna yang akan di-enroll/verify",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
     {
       "key": "base_url",
-      "value": "<SECAUTH_BASE_URL>",
+      "value": "<IDENTITYPE_BASE_URL>",
       "type": "string"
     },
     {
@@ -78,7 +78,7 @@
               "host": ["{{base_url}}"],
               "path": ["enroll"]
             },
-            "description": "Mendaftarkan pola ketikan pengguna ke SecAuth.\n\nPanggil endpoint ini minimal 3 kali dengan data events yang direkam secara nyata dari pengguna untuk membangun template biometrik yang stabil.\n\n**Fields:**\n- `username` : Identifier unik pengguna (UUID direkomendasikan)\n- `events`   : Array event keystroke (keydown/keyup) yang direkam"
+            "description": "Mendaftarkan pola ketikan pengguna ke identitype.\n\nPanggil endpoint ini minimal 3 kali dengan data events yang direkam secara nyata dari pengguna untuk membangun template biometrik yang stabil.\n\n**Fields:**\n- `username` : Identifier unik pengguna (UUID direkomendasikan)\n- `events`   : Array event keystroke (keydown/keyup) yang direkam"
           },
           "response": [
             {
@@ -436,10 +436,10 @@
     },
     {
       "name": "Simulation Website Proxy",
-      "description": "Folder untuk request ke endpoint proxy /secauth pada Simulasi Website (bukan langsung ke SecAuth).\n\nBase URL untuk folder ini adalah http://localhost:5001 (sesuaikan dengan port lokal Anda).",
+      "description": "Folder untuk request ke endpoint proxy /identitype pada Simulasi Website (bukan langsung ke identitype).\n\nBase URL untuk folder ini adalah http://localhost:5001 (sesuaikan dengan port lokal Anda).",
       "item": [
         {
-          "name": "Proxy Enroll via /secauth",
+          "name": "Proxy Enroll via /identitype",
           "event": [
             {
               "listen": "test",
@@ -476,13 +476,13 @@
               }
             },
             "url": {
-              "raw": "http://localhost:5001/secauth",
+              "raw": "http://localhost:5001/identitype",
               "protocol": "http",
               "host": ["localhost"],
               "port": "5001",
-              "path": ["secauth"]
+              "path": ["identitype"]
             },
-            "description": "Memanggil endpoint proxy /secauth pada Simulasi Website dengan mode 'enroll'.\n\nEndpoint ini meneruskan request ke SecAuth server, lalu mengembalikan response dalam format:\n```json\n{\n  \"enroll\": { ... }\n}\n```"
+            "description": "Memanggil endpoint proxy /identitype pada Simulasi Website dengan mode 'enroll'.\n\nEndpoint ini meneruskan request ke identitype server, lalu mengembalikan response dalam format:\n```json\n{\n  \"enroll\": { ... }\n}\n```"
           },
           "response": [
             {
@@ -496,7 +496,7 @@
           ]
         },
         {
-          "name": "Proxy Verify via /secauth",
+          "name": "Proxy Verify via /identitype",
           "event": [
             {
               "listen": "test",
@@ -534,13 +534,13 @@
               }
             },
             "url": {
-              "raw": "http://localhost:5001/secauth",
+              "raw": "http://localhost:5001/identitype",
               "protocol": "http",
               "host": ["localhost"],
               "port": "5001",
-              "path": ["secauth"]
+              "path": ["identitype"]
             },
-            "description": "Memanggil endpoint proxy /secauth pada Simulasi Website dengan mode 'verify'.\n\nEndpoint ini meneruskan request ke SecAuth server, lalu mengembalikan response dalam format:\n```json\n{\n  \"verify\": { ... }\n}\n```"
+            "description": "Memanggil endpoint proxy /identitype pada Simulasi Website dengan mode 'verify'.\n\nEndpoint ini meneruskan request ke identitype server, lalu mengembalikan response dalam format:\n```json\n{\n  \"verify\": { ... }\n}\n```"
           },
           "response": [
             {
