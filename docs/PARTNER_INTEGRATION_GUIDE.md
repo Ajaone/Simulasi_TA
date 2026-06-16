@@ -107,7 +107,72 @@ File bertanda ★ adalah inti integrasi identitype. Yang lain sudah Anda punya k
 
 ---
 
-## 4. Implementasi Step-by-Step
+## 4. Dua Jalur: Dari Nol vs Dari Aplikasi yang Sudah Ada
+
+Pilih jalur sesuai posisi Anda:
+
+### Jalur A — Saya belum punya aplikasi sama sekali
+
+Lanjut ke **§5 Implementasi Step-by-Step**. Bangun semuanya dari nol mengikuti Step 1–12.
+
+### Jalur B — Saya sudah punya Flask app dengan login/sign-up biasa (seperti branch `vanilla`)
+
+Anda hanya perlu **menambah delta keystroke** ke aplikasi existing. Berikut tepatnya apa yang harus ditambah / diubah.
+
+#### File yang BARU (tambah dari nol)
+
+| File | Dari mana copy | Fungsi |
+|---|---|---|
+| `website/identitype.py` | Step 5 di §5 (atau [website/identitype.py](../website/identitype.py)) | HTTP client ke identitype |
+| `website/static/recorder.js` | [website/static/recorder.js](../website/static/recorder.js) | Drop-in keystroke recorder, **copy apa adanya** |
+| `website/templates/typing_patterns.html` | Step 10 di §5 | Form enrollment |
+
+#### File yang EXISTING tapi harus DIUBAH
+
+| File | Yang ditambah | Lihat |
+|---|---|---|
+| `requirements.txt` | (tidak perlu — dependency baru tidak ada selain yang sudah ada) | — |
+| `.env.example` + `.env` | Tambah 3 baris: `IDENTITYPE_BASE_URL`, `IDENTITYPE_API_KEY`, `IDENTITYPE_TIMEOUT_SECONDS` | Step 2 |
+| `website/models.py` | Tambah kolom UUID di model User (mis. `identitype_uid`) | Step 7 |
+| `website/auth.py` | Tambah endpoint `/api/verify-password` | Step 8 |
+| `website/views.py` | Tambah route `/identitype` (proxy) + route halaman `/typing-patterns` | Step 6 |
+| `website/static/index.js` | Tambah keystroke recording untuk form login + form enrollment | Step 11 |
+| `website/templates/sign_up.html` | Ubah redirect setelah sign-up: ke `/typing-patterns` (bukan `/login`) | Step 10 |
+| `website/templates/login.html` | (tidak perlu ubah HTML — index.js yang mendeteksi form-nya) | — |
+| `website/templates/base.html` | Pastikan `<script type="module" src=".../index.js">` (kalau belum module type, harus diganti) | Step 10 |
+
+#### Database
+
+Setelah menambah kolom `identitype_uid` di `models.py`, hapus `instance/database.db` (kalau ada) lalu restart Flask — schema akan dibuat ulang dengan kolom baru. Akun existing akan hilang; kalau perlu di-preserve, lakukan migrasi via Flask-Migrate / Alembic.
+
+#### Verifikasi konkret: diff antara branch `vanilla` dan `main`
+
+Kalau Anda kerja dengan repo simulasi ini, perintah ini menunjukkan diff lengkap apa yang ditambah `main` ke `vanilla`:
+
+```bash
+git diff vanilla main -- website/ requirements.txt .env.example
+```
+
+Atau lihat per-file:
+
+```bash
+git diff vanilla main -- website/auth.py        # diff auth endpoint
+git diff vanilla main -- website/views.py       # diff routes
+git diff vanilla main -- website/models.py      # diff DB schema
+git diff vanilla main -- website/static/index.js   # diff frontend
+```
+
+Output git diff inilah blueprint paling akurat dari "apa yang harus ditambah" — lebih akurat daripada deskripsi di tabel ini, karena selalu sinkron dengan code.
+
+#### Ringkasan: 3 file baru + 5 file modifikasi + 1 schema change
+
+Setelah delta di atas selesai dan `IDENTITYPE_API_KEY` di-set di `.env`, restart Flask. Flow keystroke akan langsung jalan.
+
+---
+
+## 5. Implementasi Step-by-Step
+
+Section ini untuk **Jalur A** (dari nol). Kalau Anda di Jalur B, gunakan ini sebagai referensi isi tiap file yang disebut di tabel §4.
 
 Tiap step menjelaskan: **file apa**, **letak di mana**, **isinya apa**.
 
@@ -698,11 +763,11 @@ Buka `http://127.0.0.1:5000` di browser.
 5. **Login** — masukkan email + password. Toast: `"Pola ketikan cocok"`. Redirect ke `/dashboard`.
 6. Dashboard menampilkan `"Hello, test@test.com."`
 
-Kalau ada step gagal, lihat **§6 Stuck?** di bawah.
+Kalau ada step gagal, lihat **§8 Stuck?** di bawah.
 
 ---
 
-## 5. Production Hardening Checklist
+## 6. Production Hardening Checklist
 
 | Area | Item |
 |---|---|
@@ -718,7 +783,7 @@ Kalau ada step gagal, lihat **§6 Stuck?** di bawah.
 
 ---
 
-## 6. Reference
+## 7. Reference
 
 ### Environment Variables
 
@@ -761,7 +826,7 @@ Implementasi nyata dari setiap langkah di atas:
 
 ---
 
-## 7. Stuck?
+## 8. Stuck?
 
 | Gejala | Kemungkinan + Aksi |
 |---|---|
