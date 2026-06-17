@@ -117,6 +117,15 @@ Lanjut ke **§5 Implementasi Step-by-Step**. Bangun semuanya dari nol mengikuti 
 
 ### Jalur B — Saya sudah punya Flask app dengan login/sign-up biasa (seperti branch `vanilla`)
 
+**Untuk tutorial lengkap step-by-step, lihat dokumen terpisah:**
+👉 **[UPGRADE_FROM_VANILLA.md](./UPGRADE_FROM_VANILLA.md)**
+
+Dokumen tersebut berisi tutorial 13-step yang men-trace persis apa yang
+harus dilakukan, dengan setiap file ditulis lengkap (siap copy-paste).
+Target waktu: ~45 menit dari vanilla → identitype-enabled.
+
+Ringkasannya di bawah ini, untuk overview cepat:
+
 Anda hanya perlu **menambah delta keystroke** ke aplikasi existing. Berikut tepatnya apa yang harus ditambah / diubah.
 
 #### File yang BARU (tambah dari nol)

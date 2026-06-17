@@ -77,7 +77,11 @@ python main.py
 ## Dokumentasi
 
 - [docs/PARTNER_INTEGRATION_GUIDE.md](docs/PARTNER_INTEGRATION_GUIDE.md) —
-  panduan integrasi step-by-step (Quickstart 5 menit + Gotchas + arsitektur).
+  panduan integrasi lengkap (Quickstart cURL, arsitektur, implementasi 12 step,
+  reference, troubleshooting).
+- [docs/UPGRADE_FROM_VANILLA.md](docs/UPGRADE_FROM_VANILLA.md) —
+  tutorial khusus untuk mitra yang sudah punya Flask app dengan login
+  biasa dan mau menambah identitype. 13 step, ~45 menit.
 - [docs/API_DOCUMENTATION.md](docs/API_DOCUMENTATION.md) — reference API
   identitype (request/response per endpoint, error codes).
 - [docs/identitype_Postman_Collection.json](docs/identitype_Postman_Collection.json) —
