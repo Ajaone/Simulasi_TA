@@ -470,9 +470,27 @@ recorder.addTarget("password");   // HANYA rekam field bernama 'password'
 
 ---
 
-### Step 10 — HTML Templates (yang sering terlewat)
+### Step 10 — HTML Templates
 
-#### `website/templates/base.html` (layout induk)
+#### `website/templates/home.html`
+
+```html
+{% extends "base.html" %}
+{% block title %}identitype — Home{% endblock %}
+{% block content %}
+<h2>identitype</h2>
+<p>Keystroke-dynamics authentication demo. Sistem mengenali Anda dari ritme ketikan, bukan hanya dari password.</p>
+
+<ul>
+  <li><a href="/typing-patterns">Enroll typing pattern</a> — latih model dari ritme ketikan Anda.</li>
+  <li><a href="/dashboard">Dashboard</a> — lihat hasil verifikasi.</li>
+  <li><a href="/login">Login</a></li>
+  <li><a href="/sign-up">Sign up</a></li>
+</ul>
+{% endblock %}
+```
+
+#### `website/templates/base.html`
 
 Semua page lain `extends` ini. Berisi `<script>` import untuk `index.js` dan toast.
 
